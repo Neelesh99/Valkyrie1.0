@@ -63,7 +63,7 @@ public:
 	valk::GateDimension getDimensions();
 	bool checkInputs(Qubit singleQubitGate);
 	valk::gateType getGateType();
-	Qubit* applyGate(Qubit** inputs);
+	Qubit* applyGate(Qubit* inputs[]);
 	int averageExecutionTime();
 	int getGateTarget() {
 		return target;

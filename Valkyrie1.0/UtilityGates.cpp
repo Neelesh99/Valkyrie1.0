@@ -19,7 +19,7 @@ Qubit* CNOT::applyGate(Qubit* inputs[]) {
 	std::vector<valk::ComplexNumber> qubitValues = space.getQubitValues();
 	std::vector<valk::ComplexNumber> newValues = { 0,0,0,0 };
 	for (int i = 0; i < 4; i++) {
-		for (int j = 0; i < 4; j++) {
+		for (int j = 0; j < 4; j++) {
 			newValues[i] += qubitValues[j] * gateMatrix[i * 4 + j];
 		}
 	}
