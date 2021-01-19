@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30804.86
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Valkyrie1.0", "Valkyrie1.0\Valkyrie1.0.vcxproj", "{058FC352-8271-461B-BD67-B0A1EAFB4F6A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{058FC352-8271-461B-BD67-B0A1EAFB4F6A}.Debug|x64.ActiveCfg = Debug|x64
+		{058FC352-8271-461B-BD67-B0A1EAFB4F6A}.Debug|x64.Build.0 = Debug|x64
+		{058FC352-8271-461B-BD67-B0A1EAFB4F6A}.Release|x64.ActiveCfg = Release|x64
+		{058FC352-8271-461B-BD67-B0A1EAFB4F6A}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C0BD0F9F-F925-4A5A-965B-93D398C7EEF4}
+	EndGlobalSection
+EndGlobal
