@@ -95,9 +95,11 @@
     <ClInclude Include="valkNamespace.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CPUCircuit.cpp" />
     <ClCompile Include="GenericSingleQubitGate.cpp" />
     <ClCompile Include="QReg.cpp" />
     <ClCompile Include="Qubit.cpp" />
+    <ClCompile Include="UtilityGates.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

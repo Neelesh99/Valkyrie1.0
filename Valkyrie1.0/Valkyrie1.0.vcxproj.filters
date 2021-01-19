@@ -7,6 +7,8 @@
     <ClCompile Include="QReg.cpp" />
     <ClCompile Include="Qubit.cpp" />
     <ClCompile Include="GenericSingleQubitGate.cpp" />
+    <ClCompile Include="UtilityGates.cpp" />
+    <ClCompile Include="CPUCircuit.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="QReg.hpp" />

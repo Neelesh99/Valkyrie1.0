@@ -1,6 +1,7 @@
 #pragma once
 #include "valkNamespace.hpp"
 #include <stdexcept>
+#include <vector>
 
 class Qubit {
 
@@ -8,20 +9,19 @@ private:
 	bool checkFlag = false;
 
 protected:
-	valk::ComplexNumber* qubitvals_;
-	valk::ComplexNumber* secondVal_;
+	std::vector<valk::ComplexNumber> qubitvals_;
 
 public:
 	Qubit() {};
-	Qubit(valk::ComplexNumber* values) {
+	Qubit(std::vector<valk::ComplexNumber> values) {
 		safeLoadValues(values);
 	}
 
-	valk::ComplexNumber* getQubitValues() {
+	std::vector<valk::ComplexNumber> getQubitValues() {
 		return qubitvals_;
 	}
 
-	void safeLoadValues(valk::ComplexNumber* values);
+	void safeLoadValues(std::vector<valk::ComplexNumber> values);
 	
 	bool selfCheck() {
 		return checkFlag;

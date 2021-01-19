@@ -23,8 +23,8 @@ namespace valk {
 
 	enum gateType {
 		SingleQubit = 0,
-		SingleQReg,
-		MultiQReg,
+		CNot,
 	};
+
 
 }

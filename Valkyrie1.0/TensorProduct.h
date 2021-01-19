@@ -10,9 +10,9 @@ class QubitSpace : public Qubit {
 public:
 
 	void tensorProduct(Qubit a, Qubit b) {
-		valk::ComplexNumber* aValues = a.getQubitValues();
-		valk::ComplexNumber* bValues = b.getQubitValues();
-		valk::ComplexNumber* newValues = new valk::ComplexNumber[4];
+		std::vector<valk::ComplexNumber> aValues = a.getQubitValues();
+		std::vector<valk::ComplexNumber> bValues = b.getQubitValues();
+		std::vector<valk::ComplexNumber> newValues = { 0, 0, 0, 0 };
 		newValues[0] = aValues[0] * bValues[0];
 		newValues[1] = aValues[0] * bValues[1];
 		newValues[2] = aValues[1] * bValues[0];
@@ -20,7 +20,4 @@ public:
 		qubitvals_ = newValues;
 	}
 
-	~QubitSpace() {
-		delete qubitvals_;
-	}
 };	

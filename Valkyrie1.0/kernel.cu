@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "PauliGates.hpp"
 #include "TensorProduct.h"
+#include "DeutschJozsaExample.hpp"
 
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
@@ -53,17 +54,20 @@ int main()
     PauliX newGate = PauliX();
     valk::ComplexNumber newVal1 = 1;
     valk::ComplexNumber newVal2 = 0;
-    valk::ComplexNumber newValues[2] = { newVal1, newVal2 };
+    std::vector<valk::ComplexNumber> newValues = { newVal1, newVal2 };
     Qubit* newQubit = new Qubit(newValues);
-    Qubit* resultQubit = newGate.applyGate(newQubit);
+    Qubit* lst[1] = { newQubit };
+    Qubit* resultQubit = newGate.applyGate(lst);
     valk::ComplexNumber values = (resultQubit->getQubitValues()[1]);
     std::cout << values << std::endl;
     QubitSpace* space = new QubitSpace();
     space->tensorProduct(*newQubit, *newQubit);
-    valk::ComplexNumber* values2 = space->getQubitValues();
+    std::vector<valk::ComplexNumber> values2 = space->getQubitValues();
     for (int i = 0; i < 4; i++) {
         std::cout << values2[i] << std::endl;
     }
+    DeutschJozsa dj = DeutschJozsa();
+    dj.buildDeutschJozsaCircuit();
     delete(newQubit);
     delete(space);
     return 0;
