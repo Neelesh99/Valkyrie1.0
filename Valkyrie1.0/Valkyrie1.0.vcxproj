@@ -81,6 +81,26 @@
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CPUCircuit.h" />
+    <ClInclude Include="DeutschJozsaExample.hpp" />
+    <ClInclude Include="Gate.hpp" />
+    <ClInclude Include="GenericSingleQubitGate.h" />
+    <ClInclude Include="PauliGates.hpp" />
+    <ClInclude Include="QReg.hpp" />
+    <ClInclude Include="Qubit.hpp" />
+    <ClInclude Include="RotationGates.hpp" />
+    <ClInclude Include="TensorProduct.h" />
+    <ClInclude Include="UtilityGates.h" />
+    <ClInclude Include="valkNamespace.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CPUCircuit.cpp" />
+    <ClCompile Include="GenericSingleQubitGate.cpp" />
+    <ClCompile Include="QReg.cpp" />
+    <ClCompile Include="Qubit.cpp" />
+    <ClCompile Include="UtilityGates.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.targets" />

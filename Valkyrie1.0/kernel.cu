@@ -4,8 +4,14 @@
 #include "antlr4-runtime.h"
 #include "antlr4-runtime/SceneLexer.h"
 #include "antlr4-runtime/SceneParser.h"
+#include "valkNamespace.hpp"
+#include "Qubit.hpp"
 #include <iostream>
 #include <stdio.h>
+#include "PauliGates.hpp"
+#include "TensorProduct.h"
+#include "DeutschJozsaExample.hpp"
+
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
 
@@ -32,6 +38,7 @@ int main()
     printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
         c[0], c[1], c[2], c[3], c[4]);
 
+
     // cudaDeviceReset must be called before exiting in order for profiling and
     // tracing tools such as Nsight and Visual Profiler to show complete traces.
     cudaStatus = cudaDeviceReset();
@@ -40,10 +47,29 @@ int main()
         return 1;
     }
 
-    std::ifstream stream;
-    stream.open("delta.txtx");
-    antlr4::ANTLRInputStream input(stream);
+    //std::ifstream stream;
+    //stream.open("delta.txtx");
+    //antlr4::ANTLRInputStream input(stream);
 
+    PauliX newGate = PauliX();
+    valk::ComplexNumber newVal1 = 1;
+    valk::ComplexNumber newVal2 = 0;
+    std::vector<valk::ComplexNumber> newValues = { newVal1, newVal2 };
+    Qubit* newQubit = new Qubit(newValues);
+    Qubit* lst[1] = { newQubit };
+    Qubit* resultQubit = newGate.applyGate(lst);
+    valk::ComplexNumber values = (resultQubit->getQubitValues()[1]);
+    std::cout << values << std::endl;
+    QubitSpace* space = new QubitSpace();
+    space->tensorProduct(*newQubit, *newQubit);
+    std::vector<valk::ComplexNumber> values2 = space->getQubitValues();
+    for (int i = 0; i < 4; i++) {
+        std::cout << values2[i] << std::endl;
+    }
+    DeutschJozsa dj = DeutschJozsa();
+    dj.buildDeutschJozsaCircuit();
+    delete(newQubit);
+    delete(space);
     return 0;
 }
 
