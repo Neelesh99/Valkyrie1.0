@@ -25,7 +25,7 @@ public:
 	std::vector<concurrentBlock> getGatesPrepared() {
 		return blocks;
 	}
-	void execute();
+	void execute(bool threading);
 	std::vector<Qubit*> getFinalResults() {
 		return finalState;
 	}
