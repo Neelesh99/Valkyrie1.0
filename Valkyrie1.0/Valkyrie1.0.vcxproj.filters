@@ -2,6 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="QubitFactory.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="QReg.cpp" />
@@ -18,9 +19,11 @@
     <ClInclude Include="Gate.hpp" />
     <ClInclude Include="RotationGates.hpp" />
     <ClInclude Include="GenericSingleQubitGate.h" />
-    <ClInclude Include="TensorProduct.h" />
     <ClInclude Include="UtilityGates.h" />
     <ClInclude Include="DeutschJozsaExample.hpp" />
     <ClInclude Include="CPUCircuit.h" />
+    <ClInclude Include="QubitFactory.cuh" />
+    <ClInclude Include="TensorProduct.cuh" />
+    <ClInclude Include="ComputeDevice.cuh" />
   </ItemGroup>
 </Project>

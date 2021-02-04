@@ -5,26 +5,37 @@
 
 class Qubit {
 
-private:
-	bool checkFlag = false;
-
 protected:
-	std::vector<valk::ComplexNumber> qubitvals_;
+	int* qubitDimensions;
+	valk::ComplexNumber* qubitvals_;
 
 public:
 	Qubit() {};
-	Qubit(std::vector<valk::ComplexNumber> values) {
+	Qubit(valk::ComplexNumber* values) {
 		safeLoadValues(values);
 	}
 
-	std::vector<valk::ComplexNumber> getQubitValues() {
+	valk::ComplexNumber* getQubitValues() {
 		return qubitvals_;
 	}
 
-	void safeLoadValues(std::vector<valk::ComplexNumber> values);
-	
-	bool selfCheck() {
-		return checkFlag;
+	int* getQubitDimensions() {
+		return qubitDimensions;
+	}
+
+	void setQubitDimensions(int* dimensions) {
+		qubitDimensions = dimensions;
+	}
+
+	void safeLoadValues(valk::ComplexNumber* values);
+};
+
+class EntangledQubits : public Qubit {
+
+public:
+	EntangledQubits() {};
+	EntangledQubits(valk::ComplexNumber* values) {
+		safeLoadValues(values);
 	}
 };
 

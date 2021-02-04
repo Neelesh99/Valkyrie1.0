@@ -2,9 +2,8 @@
 
 
 
-void Qubit::safeLoadValues(std::vector<valk::ComplexNumber> values) {
+void Qubit::safeLoadValues(valk::ComplexNumber* values) {
 
-	if (values.size() > 1) {
-		qubitvals_ = values;
-	}
+	qubitvals_ = values;
+	
 }
