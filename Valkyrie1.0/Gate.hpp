@@ -22,9 +22,11 @@ public:
 };
 
 struct concurrentBlock {
+	bool crosstalk;
 	std::vector<std::vector<Gate*>> gatesApplied;
-	concurrentBlock(std::vector<std::vector<Gate*>> gates) {
+	concurrentBlock(std::vector<std::vector<Gate*>> gates, bool cross) {
 		gatesApplied = gates;
+		crosstalk = cross;
 	}
 	std::vector<std::vector<Gate*>> getGates() {
 		return gatesApplied;

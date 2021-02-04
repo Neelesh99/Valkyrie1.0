@@ -1,9 +1,9 @@
 ﻿
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "antlr4-runtime.h"
-#include "antlr4-runtime/SceneLexer.h"
-#include "antlr4-runtime/SceneParser.h"
+//#include "antlr4-runtime.h"
+//#include "antlr4-runtime/SceneLexer.h"
+//#include "antlr4-runtime/SceneParser.h"
 #include "valkNamespace.hpp"
 #include "Qubit.hpp"
 #include <iostream>
@@ -21,37 +21,80 @@ __global__ void addKernel(int *c, const int *a, const int *b)
     c[i] = a[i] + b[i];
 }
 
+__global__
+void add(int n, float* x, float* y) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    int stride = blockDim.x*gridDim.x;
+    for (int i = index; i < n; i+=stride) {
+        y[i] = x[i] + y[i];
+    }
+}
+
+int mainCudaTrial() {
+    int N = 1 << 20;
+
+    float* x, * y;
+    cudaMallocManaged(&x, N * sizeof(float));
+    cudaMallocManaged(&y, N * sizeof(float));
+
+    for (int i = 0; i < N; i++) {
+        x[i] = 1.0f;
+        y[i] = 2.0f;
+    }
+
+    int blockSize = 256;
+
+    int numBlocks = (N + blockSize - 1) / blockSize;
+
+    // Run kernel on 1M elements on the CPU
+    add <<<numBlocks, blockSize >>> (N, x, y);
+
+    cudaDeviceSynchronize();
+
+    // Check for errors (all values should be 3.0f)
+    float maxError = 0.0f;
+    for (int i = 0; i < N; i++)
+        maxError = fmax(maxError, fabs(y[i] - 3.0f));
+    std::cout << "Max error: " << maxError << std::endl;
+
+    // Free memory
+    cudaFree(x);
+    cudaFree(y);
+
+    return 0;
+}
+
 int main()
 {
-    const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
+    //const int arraySize = 5;
+    //const int a[arraySize] = { 1, 2, 3, 4, 5 };
+    //const int b[arraySize] = { 10, 20, 30, 40, 50 };
+    //int c[arraySize] = { 0 };
 
-    // Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
-        return 1;
-    }
+    //// Add vectors in parallel.
+    //cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
+    //if (cudaStatus != cudaSuccess) {
+    //    fprintf(stderr, "addWithCuda failed!");
+    //    return 1;
+    //}
 
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
+    //printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
+    //    c[0], c[1], c[2], c[3], c[4]);
 
 
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+    //// cudaDeviceReset must be called before exiting in order for profiling and
+    //// tracing tools such as Nsight and Visual Profiler to show complete traces.
+    //cudaStatus = cudaDeviceReset();
+    //if (cudaStatus != cudaSuccess) {
+    //    fprintf(stderr, "cudaDeviceReset failed!");
+    //    return 1;
+    //}
 
     //std::ifstream stream;
     //stream.open("delta.txtx");
     //antlr4::ANTLRInputStream input(stream);
 
-    PauliX newGate = PauliX();
+   /* PauliX newGate = PauliX();
     valk::ComplexNumber newVal1 = 1;
     valk::ComplexNumber newVal2 = 0;
     std::vector<valk::ComplexNumber> newValues = { newVal1, newVal2 };
@@ -65,12 +108,14 @@ int main()
     std::vector<valk::ComplexNumber> values2 = space->getQubitValues();
     for (int i = 0; i < 4; i++) {
         std::cout << values2[i] << std::endl;
-    }
-    DeutschJozsa dj = DeutschJozsa();
-    dj.buildDeutschJozsaCircuit();
-    delete(newQubit);
-    delete(space);
-    return 0;
+    }*/
+    /*for (int i = 0; i < 21; i++) {
+        DeutschJozsa dj = DeutschJozsa();
+        dj.buildResizableDeutschJozsa(100);
+    } */   
+    //delete(newQubit);
+    //delete(space);
+    return mainCudaTrial();
 }
 
 // Helper function for using CUDA to add vectors in parallel.
