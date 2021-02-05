@@ -10,6 +10,11 @@ namespace valk {
 		GPU,
 	};
 
+	enum availableGates {
+		U = 0,
+		CNOT
+	};
+
 	typedef std::complex<double> ComplexNumber;
 	
 	struct GateDimension {

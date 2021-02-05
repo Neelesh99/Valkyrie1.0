@@ -27,6 +27,13 @@ public:
 		qubitDimensions = dimensions;
 	}
 
+	valk::ComplexNumber& operator[](int index) {
+		if (index >= 0 && index < 2) {
+			return qubitvals_[index];
+		}
+		throw std::out_of_range("Index out of range");
+	}
+
 	void safeLoadValues(valk::ComplexNumber* values);
 };
 
@@ -36,6 +43,11 @@ public:
 	EntangledQubits() {};
 	EntangledQubits(valk::ComplexNumber* values) {
 		safeLoadValues(values);
+	}
+	valk::ComplexNumber& operator[](int index) {
+		if (index >= 0 && index < 4) {
+			return qubitvals_[index];
+		}
 	}
 };
 

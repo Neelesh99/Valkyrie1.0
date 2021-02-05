@@ -23,6 +23,7 @@ class CPUComputeDevice : public AbstractComputeDevice {
 public:
 
 	CPUComputeDevice() {
+		computeMode = valk::executionType::CPU;
 		qubitFactory = new CPUQubitFactory(true);
 		tensorProductEvaluation = tensorProductCPU;
 	}
@@ -40,6 +41,7 @@ class GPUComputeDevice : public AbstractComputeDevice {
 public:
 
 	GPUComputeDevice() {
+		computeMode = valk::executionType::GPU;
 		qubitFactory = new GPUQubitFactory(true);
 		tensorProductEvaluation = tensorProductGPU;
 	}

@@ -3,6 +3,7 @@
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
     <CudaCompile Include="QubitFactory.cu" />
+    <CudaCompile Include="GateFactory.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="QReg.cpp" />
@@ -16,7 +17,6 @@
     <ClInclude Include="Qubit.hpp" />
     <ClInclude Include="valkNamespace.hpp" />
     <ClInclude Include="PauliGates.hpp" />
-    <ClInclude Include="Gate.hpp" />
     <ClInclude Include="RotationGates.hpp" />
     <ClInclude Include="GenericSingleQubitGate.h" />
     <ClInclude Include="UtilityGates.h" />
@@ -25,5 +25,7 @@
     <ClInclude Include="QubitFactory.cuh" />
     <ClInclude Include="TensorProduct.cuh" />
     <ClInclude Include="ComputeDevice.cuh" />
+    <ClInclude Include="Gate.cuh" />
+    <ClInclude Include="GateFactory.cuh" />
   </ItemGroup>
 </Project>
