@@ -6,6 +6,9 @@
 #include "libs/qasm3Parser.h"
 #include "libs/qasm3Visitor.h"
 #include "libs/qasm3BaseVisitor.h"
+#include <Windows.h>
+#include <string>
+#include <fstream>
 //#include "valkNamespace.hpp"
 //#include "Qubit.hpp"
 #include <iostream>
@@ -70,6 +73,18 @@ int mainCudaTrial() {
 
     return 0;
 }
+std::string GetExeFileName()
+{
+    char buffer[MAX_PATH];
+    GetModuleFileName(NULL, buffer, MAX_PATH);
+    return std::string(buffer);
+}
+
+std::string GetExePath()
+{
+    std::string f = GetExeFileName();
+    return f.substr(0, f.find_last_of("\\/"));
+}
 
 int main()
 {
@@ -122,6 +137,7 @@ int main()
     } */   
     //delete(newQubit);
     //delete(space);
+    
     std::ifstream stream;
 
     stream.open("output.qasm");
