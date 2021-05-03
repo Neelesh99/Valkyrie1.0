@@ -6,6 +6,8 @@
 
 #include "antlr4-runtime.h"
 #include "qasm3Visitor.h"
+#include "BaseTypes.h"
+#include "Exceptions.h"
 
 
 /**
@@ -13,28 +15,80 @@
  * extended to create a visitor which only needs to handle a subset of the available methods.
  */
 class  qasm3BaseVisitor : public qasm3Visitor {
+private:
+    int debugLevel = 1;
 public:
 
   virtual antlrcpp::Any visitProgram(qasm3Parser::ProgramContext *ctx) override {
-    std::cout << ctx->getText() << std::endl;
-    //return visitChildren(ctx);
+      if (ctx->header()->isEmpty()) {
+          std::cout << "Header not found, invalid OpenQASM file" << std::endl;
+          std::cout << "OpenQASM provided was: " << std::endl;
+          std::cout << ctx->toString() << std::endl;
+          return 1;
+      }
+      else {
+          qasm3Parser::HeaderContext* hctx;
+          hctx = ctx->header();
+          HeaderData headerD = visitHeader(hctx).as<HeaderData>();
+          if (debugLevel > 0) {
+              std::cout << "Header succesfully processed" << std::endl;
+          }
+          std::vector<qasm3Parser::GlobalStatementContext*> globals = ctx->globalStatement();
+          std::vector<qasm3Parser::StatementContext*> locals = ctx->statement();
+          for (auto gctx : globals) {
+              visitGlobalStatement(gctx);
+          }
+      }
     return 0;
   }
 
   virtual antlrcpp::Any visitHeader(qasm3Parser::HeaderContext *ctx) override {
+      if (ctx->version()->isEmpty()) {
+          std::cout << "No version provided" << std::endl;
+      }
+      else {
+          std::string version = visitVersion(ctx->version()).as<std::string>();
+          std::vector<std::string> includes;
+          for (auto ictx : ctx->include()) {
+              includes.push_back(visitInclude(ictx).as<std::string>());
+          }
+          HeaderData header = HeaderData(version, includes);
+          return header;
+      }
     return visitChildren(ctx);
   }
 
   virtual antlrcpp::Any visitVersion(qasm3Parser::VersionContext *ctx) override {
-    return visitChildren(ctx);
+      if (!ctx->Integer()) {
+          if (ctx->RealNumber()) {
+              std::string ret = ctx->RealNumber()->toString();
+              return ret;
+          }
+          else {
+              throw VersionException();
+          }
+      }
+      else {
+          double val = (double) std::stoi(ctx->Integer()->toString());
+          return std::to_string(val);
+      }
+      
+      
   }
 
   virtual antlrcpp::Any visitInclude(qasm3Parser::IncludeContext *ctx) override {
-    return visitChildren(ctx);
+    return ctx->toString();
   }
 
   virtual antlrcpp::Any visitGlobalStatement(qasm3Parser::GlobalStatementContext *ctx) override {
-    return visitChildren(ctx);
+      if (!ctx->quantumDeclarationStatement()) {
+          std::cout << "Not currently supported" << std::endl;
+      }
+      else {
+          qasm3Parser::QuantumDeclarationStatementContext* qDeclaration = ctx->quantumDeclarationStatement();
+          GlobalStatement gStatement = visitQuantumDeclarationStatement(qDeclaration).as<GlobalStatement>();
+      }
+      return 1;
   }
 
   virtual antlrcpp::Any visitStatement(qasm3Parser::StatementContext *ctx) override {
@@ -42,6 +96,11 @@ public:
   }
 
   virtual antlrcpp::Any visitQuantumDeclarationStatement(qasm3Parser::QuantumDeclarationStatementContext *ctx) override {
+      if (ctx->quantumDeclaration()) {
+          std::cout << "Quantum declaration statement" << std::endl;
+          std::cout << ctx->toString() << std::endl;
+          return visitQuantumDeclaration(ctx->quantumDeclaration());
+      } 
     return visitChildren(ctx);
   }
 
@@ -82,6 +141,11 @@ public:
   }
 
   virtual antlrcpp::Any visitQuantumDeclaration(qasm3Parser::QuantumDeclarationContext *ctx) override {
+      std::string type = ctx->quantumType()->toString();
+      qasm3Parser::IndexIdentifierListContext* iList = ctx->indexIdentifierList();
+      if (iList) {
+          visitIndexIdentifierList(iList);
+      }
     return visitChildren(ctx);
   }
 
@@ -158,6 +222,11 @@ public:
   }
 
   virtual antlrcpp::Any visitIndexIdentifierList(qasm3Parser::IndexIdentifierListContext *ctx) override {
+      std::vector<qasm3Parser::IndexIdentifierContext*> iList = ctx->indexIdentifier();
+      std::vector<Register> registersDeclared;
+      for (auto indexIdentifier : iList) {
+
+      }
     return visitChildren(ctx);
   }
 

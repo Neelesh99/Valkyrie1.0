@@ -4,21 +4,24 @@
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="libs\qasm3.interp" />
-    <None Include="libs\qasm3.tokens" />
-    <None Include="libs\qasm3Lexer.interp" />
-    <None Include="libs\qasm3Lexer.tokens" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="libs\qasm3BaseVisitor.cpp" />
-    <ClCompile Include="libs\qasm3Lexer.cpp" />
-    <ClCompile Include="libs\qasm3Parser.cpp" />
-    <ClCompile Include="libs\qasm3Visitor.cpp" />
-  </ItemGroup>
-  <ItemGroup>
+    <ClInclude Include="libs\BaseTypes.h" />
+    <ClInclude Include="libs\Exceptions.h" />
+    <ClInclude Include="libs\qasm2BaseVisitor.h" />
+    <ClInclude Include="libs\qasm2Lexer.h" />
+    <ClInclude Include="libs\qasm2Parser.h" />
+    <ClInclude Include="libs\qasm2Visitor.h" />
     <ClInclude Include="libs\qasm3BaseVisitor.h" />
-    <ClInclude Include="libs\qasm3Lexer.h" />
-    <ClInclude Include="libs\qasm3Parser.h" />
-    <ClInclude Include="libs\qasm3Visitor.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libs\qasm2.interp" />
+    <None Include="libs\qasm2.tokens" />
+    <None Include="libs\qasm2Lexer.interp" />
+    <None Include="libs\qasm2Lexer.tokens" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="libs\qasm2BaseVisitor.cpp" />
+    <ClCompile Include="libs\qasm2Lexer.cpp" />
+    <ClCompile Include="libs\qasm2Parser.cpp" />
+    <ClCompile Include="libs\qasm2Visitor.cpp" />
   </ItemGroup>
 </Project>

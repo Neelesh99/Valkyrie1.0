@@ -2,10 +2,10 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include "antlr4-runtime.h"
-#include "libs/qasm3Lexer.h"
-#include "libs/qasm3Parser.h"
-#include "libs/qasm3Visitor.h"
-#include "libs/qasm3BaseVisitor.h"
+#include "libs/qasm2Lexer.h"
+#include "libs/qasm2Parser.h"
+#include "libs/qasm2Visitor.h"
+#include "libs/qasm2BaseVisitor.h"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -143,14 +143,14 @@ int main()
     stream.open("output.qasm");
     ANTLRInputStream input(stream);
 
-    qasm3Lexer lexer(&input);
+    qasm2Lexer lexer(&input);
     CommonTokenStream tokens(&lexer);
-    qasm3Parser parser(&tokens);
+    qasm2Parser parser(&tokens);
 
-    qasm3Parser::ProgramContext* tree = parser.program();
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
 
-    qasm3BaseVisitor visitor;
-    visitor.visitProgram(tree);
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
     
 
     return mainCudaTrial();
