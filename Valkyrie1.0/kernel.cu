@@ -1,9 +1,9 @@
 ﻿
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-//#include "antlr4-runtime.h"
-//#include "antlr4-runtime/SceneLexer.h"
-//#include "antlr4-runtime/SceneParser.h"
+#include "antlr4-runtime.h"
+#include "libs/qasm3Lexer.h"
+#include "libs/qasm3Parser.h"
 //#include "valkNamespace.hpp"
 //#include "Qubit.hpp"
 #include <iostream>
