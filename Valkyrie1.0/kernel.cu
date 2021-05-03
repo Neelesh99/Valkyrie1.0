@@ -4,13 +4,13 @@
 //#include "antlr4-runtime.h"
 //#include "antlr4-runtime/SceneLexer.h"
 //#include "antlr4-runtime/SceneParser.h"
-#include "valkNamespace.hpp"
-#include "Qubit.hpp"
+//#include "valkNamespace.hpp"
+//#include "Qubit.hpp"
 #include <iostream>
 #include <stdio.h>
-#include "PauliGates.hpp"
-#include "TensorProduct.h"
-#include "DeutschJozsaExample.hpp"
+//#include "PauliGates.hpp"
+//#include "TensorProduct.h"
+//#include "DeutschJozsaExample.hpp"
 
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);

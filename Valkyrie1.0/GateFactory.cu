@@ -40,9 +40,9 @@ void CPUGateFactory::appendToGates(Gate* val) {
 }
 
 Gate* CPUGateFactory::createNewGate(valk::availableGates gate_types) {
+	Gate* returnGate = createNewCNOTGate();
 	switch (gate_types) {
-	case valk::availableGates::CNOT:
-		Gate* returnGate =  createNewCNOTGate();
+	case valk::availableGates::CNOT:		
 		appendToGates(returnGate);
 		return returnGate;
 		break;
@@ -55,12 +55,12 @@ Gate* CPUGateFactory::createNewGate(valk::availableGates gate_types) {
 }
 
 Gate* CPUGateFactory::createNewGate(valk::availableGates gate_types, valk::ComplexNumber* values) {
+	Gate* returnGate = createNewUGate(values);
 	switch (gate_types) {
 	case valk::availableGates::CNOT:
 		throw std::invalid_argument("Expected no initialised values for CNOT gate");
 		break;
-	case valk::availableGates::U:
-		Gate* returnGate = createNewUGate(values);
+	case valk::availableGates::U:		
 		appendToGates(returnGate);
 		return returnGate;
 		break;
@@ -140,9 +140,9 @@ void GPUGateFactory::appendToGates(Gate* val) {
 }
 
 Gate* GPUGateFactory::createNewGate(valk::availableGates gate_types) {
+	Gate* returnGate = createNewCNOTGate();
 	switch (gate_types) {
-	case valk::availableGates::CNOT:
-		Gate* returnGate = createNewCNOTGate();
+	case valk::availableGates::CNOT:		
 		appendToGates(returnGate);
 		return returnGate;
 		break;
@@ -155,12 +155,12 @@ Gate* GPUGateFactory::createNewGate(valk::availableGates gate_types) {
 }
 
 Gate* GPUGateFactory::createNewGate(valk::availableGates gate_types, valk::ComplexNumber* values) {
+	Gate* returnGate = createNewUGate(values);
 	switch (gate_types) {
 	case valk::availableGates::CNOT:
 		throw std::invalid_argument("Expected no initialised values for CNOT gate");
 		break;
-	case valk::availableGates::U:
-		Gate* returnGate = createNewUGate(values);
+	case valk::availableGates::U:		
 		appendToGates(returnGate);
 		return returnGate;
 		break;
