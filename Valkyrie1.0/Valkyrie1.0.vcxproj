@@ -83,32 +83,7 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="GateFactory.cu" />
     <CudaCompile Include="kernel.cu" />
-    <CudaCompile Include="QubitFactory.cu" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="ComputeDevice.cuh" />
-    <ClInclude Include="GateFactory.cuh" />
-    <ClInclude Include="QubitFactory.cuh" />
-    <ClInclude Include="CPUCircuit.h" />
-    <ClInclude Include="DeutschJozsaExample.hpp" />
-    <ClInclude Include="Gate.cuh" />
-    <ClInclude Include="GenericSingleQubitGate.h" />
-    <ClInclude Include="PauliGates.hpp" />
-    <ClInclude Include="QReg.hpp" />
-    <ClInclude Include="Qubit.hpp" />
-    <ClInclude Include="RotationGates.hpp" />
-    <ClInclude Include="TensorProduct.cuh" />
-    <ClInclude Include="UtilityGates.h" />
-    <ClInclude Include="valkNamespace.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="CPUCircuit.cpp" />
-    <ClCompile Include="GenericSingleQubitGate.cpp" />
-    <ClCompile Include="QReg.cpp" />
-    <ClCompile Include="Qubit.cpp" />
-    <ClCompile Include="UtilityGates.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

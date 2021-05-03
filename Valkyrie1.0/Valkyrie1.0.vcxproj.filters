@@ -2,30 +2,5 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
-    <CudaCompile Include="QubitFactory.cu" />
-    <CudaCompile Include="GateFactory.cu" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="QReg.cpp" />
-    <ClCompile Include="Qubit.cpp" />
-    <ClCompile Include="GenericSingleQubitGate.cpp" />
-    <ClCompile Include="UtilityGates.cpp" />
-    <ClCompile Include="CPUCircuit.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="QReg.hpp" />
-    <ClInclude Include="Qubit.hpp" />
-    <ClInclude Include="valkNamespace.hpp" />
-    <ClInclude Include="PauliGates.hpp" />
-    <ClInclude Include="RotationGates.hpp" />
-    <ClInclude Include="GenericSingleQubitGate.h" />
-    <ClInclude Include="UtilityGates.h" />
-    <ClInclude Include="DeutschJozsaExample.hpp" />
-    <ClInclude Include="CPUCircuit.h" />
-    <ClInclude Include="QubitFactory.cuh" />
-    <ClInclude Include="TensorProduct.cuh" />
-    <ClInclude Include="ComputeDevice.cuh" />
-    <ClInclude Include="Gate.cuh" />
-    <ClInclude Include="GateFactory.cuh" />
   </ItemGroup>
 </Project>
