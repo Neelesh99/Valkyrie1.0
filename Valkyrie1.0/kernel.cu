@@ -4,6 +4,8 @@
 #include "antlr4-runtime.h"
 #include "libs/qasm3Lexer.h"
 #include "libs/qasm3Parser.h"
+#include "libs/qasm3Visitor.h"
+#include "libs/qasm3BaseVisitor.h"
 //#include "valkNamespace.hpp"
 //#include "Qubit.hpp"
 #include <iostream>
@@ -12,6 +14,7 @@
 //#include "TensorProduct.h"
 //#include "DeutschJozsaExample.hpp"
 
+using namespace antlr4;
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
 
@@ -60,6 +63,10 @@ int mainCudaTrial() {
     // Free memory
     cudaFree(x);
     cudaFree(y);
+
+    std::cout << "CUDA Test complete" << std::endl;
+
+    
 
     return 0;
 }
@@ -115,6 +122,21 @@ int main()
     } */   
     //delete(newQubit);
     //delete(space);
+    std::ifstream stream;
+
+    stream.open("output.qasm");
+    ANTLRInputStream input(stream);
+
+    qasm3Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm3Parser parser(&tokens);
+
+    qasm3Parser::ProgramContext* tree = parser.program();
+
+    qasm3BaseVisitor visitor;
+    visitor.visitProgram(tree);
+    
+
     return mainCudaTrial();
 }
 

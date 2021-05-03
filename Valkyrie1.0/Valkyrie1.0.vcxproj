@@ -85,6 +85,24 @@
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="libs\qasm3.interp" />
+    <None Include="libs\qasm3.tokens" />
+    <None Include="libs\qasm3Lexer.interp" />
+    <None Include="libs\qasm3Lexer.tokens" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="libs\qasm3BaseVisitor.cpp" />
+    <ClCompile Include="libs\qasm3Lexer.cpp" />
+    <ClCompile Include="libs\qasm3Parser.cpp" />
+    <ClCompile Include="libs\qasm3Visitor.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="libs\qasm3BaseVisitor.h" />
+    <ClInclude Include="libs\qasm3Lexer.h" />
+    <ClInclude Include="libs\qasm3Parser.h" />
+    <ClInclude Include="libs\qasm3Visitor.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 11.2.targets" />

@@ -16,7 +16,9 @@ class  qasm3BaseVisitor : public qasm3Visitor {
 public:
 
   virtual antlrcpp::Any visitProgram(qasm3Parser::ProgramContext *ctx) override {
-    return visitChildren(ctx);
+    std::cout << ctx->getText() << std::endl;
+    //return visitChildren(ctx);
+    return 0;
   }
 
   virtual antlrcpp::Any visitHeader(qasm3Parser::HeaderContext *ctx) override {
