@@ -54,6 +54,14 @@ private:
         return gate;
     }
 public:
+    
+    std::vector<Register> getRegisters() {
+        return registers_;
+    }
+
+    std::vector<GateRequest> getGates() {
+        return gates_;
+    }
 
   virtual antlrcpp::Any visitMainprog(qasm2Parser::MainprogContext *ctx) override {
       if (ctx->version()) {

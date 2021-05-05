@@ -89,6 +89,7 @@
     <ClInclude Include="libs\qasm2Lexer.h" />
     <ClInclude Include="libs\qasm2Parser.h" />
     <ClInclude Include="libs\qasm2Visitor.h" />
+    <ClInclude Include="libs\staging.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libs\qasm2.interp" />

@@ -98,18 +98,27 @@ public:
 		registerIdentifiers_.push_back(registerID);
 		locations_.push_back(location);
 	}
+	int getGateDim() {
+		return registerIdentifiers_.size() + locations_.size() - 1;
+	}
 };
 
 class ConcurrentBlock {
 private:
-	int count_;
+	int count_ = 0;
 	std::vector<GateRequest> gates_;
 public:
 	ConcurrentBlock(int count) {
-		count_ = count;
 	}
 	void addGate(GateRequest newGate) {
 		gates_.push_back(newGate);
+		count_++;
+	}
+	void setCount(int count) {
+		count_ = count;
+	}
+	int getCount() {
+		return count_;
 	}
 	std::vector<GateRequest> getGates() {
 		return gates_;

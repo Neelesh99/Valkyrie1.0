@@ -6,6 +6,7 @@
 #include "libs/qasm2Parser.h"
 #include "libs/qasm2Visitor.h"
 #include "libs/qasm2BaseVisitor.h"
+#include "libs/staging.h"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -61,6 +62,11 @@ int main()
 
     qasm2BaseVisitor visitor;
     visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    Stager stage = Stager();
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+
 
     return 0;
 }
