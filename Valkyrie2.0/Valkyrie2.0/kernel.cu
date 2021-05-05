@@ -1,8 +1,19 @@
 ﻿
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
+#include "antlr4-runtime.h"
+#include "libs/qasm2Lexer.h"
+#include "libs/qasm2Parser.h"
+#include "libs/qasm2Visitor.h"
+#include "libs/qasm2BaseVisitor.h"
+#include <Windows.h>
+#include <string>
+#include <fstream>
+#include <iostream>
 
 #include <stdio.h>
+
+using namespace antlr4;
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
 
@@ -36,6 +47,20 @@ int main()
         fprintf(stderr, "cudaDeviceReset failed!");
         return 1;
     }
+
+    std::ifstream stream;
+
+    stream.open("output.qasm");
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
 
     return 0;
 }

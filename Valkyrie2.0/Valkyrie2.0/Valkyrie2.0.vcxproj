@@ -41,6 +41,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>N:\ValkyrieRec\Valkyrie1.0\Valkyrie2.0\x64\Debug\antlrLib\runtime\src;$(IncludePath)</IncludePath>
+    <LibraryPath>N:\ValkyrieRec\Valkyrie1.0\Valkyrie2.0\x64\Debug\antlrLib\runtime\bin\vs-2019\x64\Debug DLL;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -51,7 +53,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;antlr4-runtime.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -78,6 +80,27 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="libs\antlr4-runtime.h" />
+    <ClInclude Include="libs\BaseTypes.h" />
+    <ClInclude Include="libs\Exceptions.h" />
+    <ClInclude Include="libs\qasm2BaseVisitor.h" />
+    <ClInclude Include="libs\qasm2Lexer.h" />
+    <ClInclude Include="libs\qasm2Parser.h" />
+    <ClInclude Include="libs\qasm2Visitor.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libs\qasm2.interp" />
+    <None Include="libs\qasm2.tokens" />
+    <None Include="libs\qasm2Lexer.interp" />
+    <None Include="libs\qasm2Lexer.tokens" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="libs\qasm2BaseVisitor.cpp" />
+    <ClCompile Include="libs\qasm2Lexer.cpp" />
+    <ClCompile Include="libs\qasm2Parser.cpp" />
+    <ClCompile Include="libs\qasm2Visitor.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
