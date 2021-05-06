@@ -7,6 +7,9 @@ private:
 	DeviceType type_;
 	std::vector<Qubit*> qubits_;
 public:
+	CPUQubitFactory(){
+		type_ = CPU_;
+	}
 	Qubit* generateQubit();
 	~CPUQubitFactory();
 };
@@ -16,31 +19,46 @@ private:
 	DeviceType type_;
 	std::vector<Gate*> gates_;
 public:
+	CPUGateFactory() {
+		type_ = CPU_;
+	}
 	Gate* generateGate(GateRequest request);
 	~CPUGateFactory();
 };
 
-//class AbstractQuantumCircuit {
-//private:
-//	DeviceType type_;
-//	bool done_;
-//public:
-//	virtual void loadQubitMap(std::map<std::string, std::vector<Qubit*>> qubitMap) = 0;
-//	virtual void loadBlock(ConcurrentBlock block) = 0;
-//	virtual Calculation getNextCalculation() = 0;
-//	virtual void returnResults(std::complex<double>* quabitVals) = 0;
-//	virtual bool checkComplete() = 0;
-//};
-//
-//class AbstractQuantumProcessor {
-//private:
-//	DeviceType type_;
-//	AbstractQuantumCircuit* circuit_;
-//public:
-//	virtual void loadCircuit(AbstractQuantumCircuit* circuit) = 0;
-//	virtual void calculate() = 0;
-//	virtual std::map<std::string, std::vector<Qubit*>> qubitMapfetchQubitValues() = 0;
-//};
+class CPUQuantumCircuit : AbstractQuantumCircuit {
+private:
+	DeviceType type_;
+	bool done_;
+	std::map<std::string, std::vector<Qubit*>> qubitMap_;
+	std::vector<std::vector<Calculation>> calculations_;
+	CPUGateFactory* gateFactory_;
+	int calcCounter = 0;
+public:
+	CPUQuantumCircuit(CPUGateFactory* gateFactory) {
+		gateFactory_ = gateFactory;
+		type_ = CPU_;
+		done_ = false;
+	}
+	void loadQubitMap(std::map<std::string, std::vector<Qubit*>> qubitMap);
+	void loadBlock(ConcurrentBlock block);
+	std::vector<Calculation> getNextCalculation();
+	std::map<std::string, std::vector<Qubit*>> returnResults();
+	bool checkComplete();
+};
+
+class CPUQuantumProcessor : AbstractQuantumProcessor {
+private:
+	DeviceType type_;
+	AbstractQuantumCircuit* circuit_;
+public:
+	CPUQuantumProcessor() {
+		type_ = CPU_;
+	}
+	void loadCircuit(AbstractQuantumCircuit* circuit);
+	void calculate();
+	std::map<std::string, std::vector<Qubit*>> qubitMapfetchQubitValues();
+};
 //
 //class AbstractDevice {
 //private:

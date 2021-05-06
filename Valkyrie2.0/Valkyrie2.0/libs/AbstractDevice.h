@@ -24,8 +24,8 @@ private:
 public:
 	virtual void loadQubitMap(std::map<std::string, std::vector<Qubit*>> qubitMap) = 0;
 	virtual void loadBlock(ConcurrentBlock block) = 0;
-	virtual Calculation getNextCalculation() = 0;
-	virtual void returnResults(std::complex<double>* quabitVals) = 0;
+	virtual std::vector<Calculation> getNextCalculation() = 0;
+	virtual std::map<std::string, std::vector<Qubit*>> returnResults() = 0;
 	virtual bool checkComplete() = 0;
 };
 

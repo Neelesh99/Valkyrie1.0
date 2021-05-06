@@ -166,18 +166,12 @@ private:
 	std::vector<std::vector<std::complex<double>>> gateArray_;
 	int m_;	// dimensions
 	int n_;
-	bool isBarrier_;
 public:
 	Gate(int m, int n, std::vector<std::vector<std::complex<double>>> gateArray) {
 		m_ = m;
 		n_ = n;
 		gateArray_ = gateArray;
 	}
-
-	Gate(bool barrier) {
-		isBarrier_ = barrier;
-	}
-
 	std::complex<double> fetchValue(int x, int y) {
 		/*if (x < m_ && y < n_) {
 			int index = x * m_ + y;
@@ -188,23 +182,33 @@ public:
 		}*/
 		return gateArray_[x][y];
 	}
+	int getM() {
+		return m_;
+	}
+	int getN() {
+		return n_;
+	}
 
 };
 
 class Calculation {
 private:
 	Gate* gate_;
-	std::complex<double>* qubitValues_;
+	//std::complex<double>* qubitValues_; next iteration
+	std::vector<Qubit*> qubitValues_;
 public:
-	Calculation(Gate* gate, std::complex<double>* qubitVals) {
+	Calculation(Gate* gate, std::vector<Qubit*> qubitVals) {
 		gate_ = gate;
 		qubitValues_ = qubitVals;
 	}
 	Gate* getGate() {
 		return gate_;
 	}
-	std::complex<double>* getQubitValue(int i) {
-		return &qubitValues_[i];
+	Qubit* getQubit(int i) {
+		return qubitValues_[i];
 	}
 
+	std::vector<Qubit*> getQubits() {
+		return qubitValues_;
+	}
 };
