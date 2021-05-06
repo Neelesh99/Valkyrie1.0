@@ -162,28 +162,31 @@ public:
 
 class Gate {
 private:
-	std::complex<double>* gateArray_;
+	// std::complex<double>* gateArray_; for next iteration
+	std::vector<std::vector<std::complex<double>>> gateArray_;
 	int m_;	// dimensions
 	int n_;
 	bool isBarrier_;
 public:
-	Gate(int m, int n, std::complex<double>* gateArray) {
+	Gate(int m, int n, std::vector<std::vector<std::complex<double>>> gateArray) {
 		m_ = m;
 		n_ = n;
+		gateArray_ = gateArray;
 	}
 
 	Gate(bool barrier) {
 		isBarrier_ = barrier;
 	}
 
-	std::complex<double>* fetchValue(int x, int y) {
-		if (x < m_ && y < n_) {
+	std::complex<double> fetchValue(int x, int y) {
+		/*if (x < m_ && y < n_) {
 			int index = x * m_ + y;
 			return &gateArray_[index];
 		}
 		else {
 			return nullptr;
-		}
+		}*/
+		return gateArray_[x][y];
 	}
 
 };

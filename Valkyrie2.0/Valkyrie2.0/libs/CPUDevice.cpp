@@ -40,6 +40,17 @@ CPUQubitFactory::~CPUQubitFactory()
 Gate* CPUGateFactory::generateGate(GateRequest request)
 {
 	std::vector<std::vector<std::complex<double>>> gateMatrix = getGateMatrix(request.getGateType());
+	int gateM = gateMatrix.size();
+	int gateN = gateMatrix[0].size();
 
-	return nullptr;
+	Gate* generatedGate = new Gate(gateM, gateN, gateMatrix);
+	gates_.push_back(generatedGate);
+	return generatedGate;
+}
+
+CPUGateFactory::~CPUGateFactory()
+{
+	for (auto gate : gates_) {
+		delete gate;
+	}
 }

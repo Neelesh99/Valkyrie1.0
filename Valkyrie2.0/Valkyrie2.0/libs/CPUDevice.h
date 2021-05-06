@@ -17,6 +17,7 @@ private:
 	std::vector<Gate*> gates_;
 public:
 	Gate* generateGate(GateRequest request);
+	~CPUGateFactory();
 };
 
 //class AbstractQuantumCircuit {
