@@ -6,11 +6,14 @@ const double ROOT2INV = 1.0 / std::pow(2, 0.5);
 
 std::vector<std::vector<std::complex<double>>> getGateMatrix(GateRequestType gateType) {
 	switch (gateType) {
+	case I:
+		return std::vector<std::vector<std::complex<double>>> { {1, 0}, {0, 1} };
+		break;
 	case h:
 		return std::vector<std::vector<std::complex<double>>> { {ROOT2INV, ROOT2INV}, {ROOT2INV, -1.0 * ROOT2INV} };
 		break;
 	case cx:
-		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 0, 0, 1 }, { 0, 0, 1, 0 }, { 0, 1, 0, 0 } };
+		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 0, 0, 1, 0 } };
 		break;
 	}
 }
@@ -120,19 +123,39 @@ void CPUQuantumProcessor::calculate()
 			int m = gate->getM();
 			int n = gate->getN();
 			int qubitN = m / 2;
-			std::vector<Qubit*> qubits = calc.getQubits();
-			for (int i = 0; i < qubitN; i++) {
-				Qubit* qubit = qubits[i];
+			std::vector<std::complex<double>> qubitValsBefore_;
+			std::vector<std::complex<double>> qubitValsAfter_;
+			std::vector<Qubit*> qubits = calc.getQubits();	
+			if (m == 2) {
+				qubitValsBefore_.push_back(*qubits[0]->fetch(0));
+				qubitValsBefore_.push_back(*qubits[0]->fetch(1));
+			}
+			else {
+				// Perform tensor product
+				qubitValsBefore_.push_back(*qubits[0]->fetch(0) * *qubits[1]->fetch(0));
+				qubitValsBefore_.push_back(*qubits[0]->fetch(0) * *qubits[1]->fetch(1));
+				qubitValsBefore_.push_back(*qubits[0]->fetch(1) * *qubits[1]->fetch(0));
+				qubitValsBefore_.push_back(*qubits[0]->fetch(1) * *qubits[1]->fetch(1));
+			}
+			for (int i = 0; i < m; i++) {
 				std::complex<double> val = 0;
 				for (int j = 0; j < n; j++) {
-					val += gate->fetchValue(2 * i, j) * *qubits[j / 2]->fetch(j % 2);
-				}				
-				std::complex<double> val2 = 0;
-				for (int j = 0; j < n; j++) {
-					val2 += gate->fetchValue(2 * i + 1, j) * *qubits[j / 2]->fetch(j % 2);
+					val += gate->fetchValue(i, j) * qubitValsBefore_[j];
 				}
-				*qubit->fetch(0) = val;
-				*qubit->fetch(1) = val2;
+				qubitValsAfter_.push_back(val);
+			}
+			if (m == 2) {
+				Qubit* qubit = qubits[0];
+				*qubit->fetch(0) = qubitValsAfter_[0];
+				*qubit->fetch(1) = qubitValsAfter_[1];
+			}
+			else {
+				Qubit* qubit1 = qubits[0];
+				Qubit* qubit2 = qubits[1];
+				*qubit1->fetch(0) = qubitValsAfter_[0] + qubitValsAfter_[1];
+				*qubit1->fetch(1) = qubitValsAfter_[2] + qubitValsAfter_[3];
+				*qubit2->fetch(0) = qubitValsAfter_[0] + qubitValsAfter_[2];
+				*qubit2->fetch(1) = qubitValsAfter_[1] + qubitValsAfter_[3];
 			}
 		}
 	}

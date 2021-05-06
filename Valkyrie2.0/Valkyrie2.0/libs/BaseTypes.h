@@ -96,6 +96,7 @@ public:
 
 
 enum GateRequestType {
+	I,
 	U,
 	CX,
 	h,
