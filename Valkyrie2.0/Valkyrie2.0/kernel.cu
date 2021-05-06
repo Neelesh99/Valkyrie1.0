@@ -7,6 +7,7 @@
 #include "libs/qasm2Visitor.h"
 #include "libs/qasm2BaseVisitor.h"
 #include "libs/staging.h"
+#include "libs/CPUDevice.h"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -24,6 +25,8 @@ __global__ void addKernel(int *c, const int *a, const int *b)
     int i = threadIdx.x;
     c[i] = a[i] + b[i];
 }
+
+
 
 int main()
 {
@@ -51,7 +54,7 @@ int main()
     }
 
     std::ifstream stream;
-
+    // h q[0];
     stream.open("output.qasm");
     ANTLRInputStream input(stream);
 
@@ -67,7 +70,9 @@ int main()
     std::vector<GateRequest> gateRequests = visitor.getGates();
     Stager stage = Stager();
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
-
+    CPUDevice device = CPUDevice();
+    device.run(stage.getRegisters(), blocks);
+    device.prettyPrintQubitStates(device.revealQuantumState());
     DisplayHeader();
     return 0;
 }

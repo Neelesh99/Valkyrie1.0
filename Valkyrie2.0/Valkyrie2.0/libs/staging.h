@@ -56,5 +56,9 @@ public:
 	std::vector<ConcurrentBlock> getConcurrencyBlocks() {
 		return blocks_;
 	}
+
+	std::vector<Register> getRegisters() {
+		return registers_;
+	}
 	
 };

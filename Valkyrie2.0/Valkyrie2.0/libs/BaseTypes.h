@@ -79,6 +79,18 @@ public:
 		regType_ = type;
 		cReg_ = creg;
 	}
+
+	QuantumRegister getQuantumRegister() {
+		return qReg_;
+	}
+
+	ClassicalRegister getClassicalRegister() {
+		return cReg_;
+	}
+
+	bool isQuantum() {
+		return regType_ == quantum_;
+	}
 };
 
 

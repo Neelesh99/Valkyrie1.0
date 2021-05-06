@@ -10,7 +10,7 @@ std::vector<std::vector<std::complex<double>>> getGateMatrix(GateRequestType gat
 		return std::vector<std::vector<std::complex<double>>> { {ROOT2INV, ROOT2INV}, {ROOT2INV, -1.0 * ROOT2INV} };
 		break;
 	case cx:
-		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 0, 0, 1, 0 } };
+		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 0, 0, 1 }, { 0, 0, 1, 0 }, { 0, 1, 0, 0 } };
 		break;
 	}
 }
@@ -33,6 +33,8 @@ Qubit* CPUQubitFactory::generateQubit()
 CPUQubitFactory::~CPUQubitFactory()
 {
 	for (auto qubit : qubits_) {
+		delete qubit->fetch(0);
+		delete qubit->fetch(1);
 		delete qubit;
 	}
 }
@@ -124,12 +126,13 @@ void CPUQuantumProcessor::calculate()
 				std::complex<double> val = 0;
 				for (int j = 0; j < n; j++) {
 					val += gate->fetchValue(2 * i, j) * *qubits[j / 2]->fetch(j % 2);
+				}				
+				std::complex<double> val2 = 0;
+				for (int j = 0; j < n; j++) {
+					val2 += gate->fetchValue(2 * i + 1, j) * *qubits[j / 2]->fetch(j % 2);
 				}
 				*qubit->fetch(0) = val;
-				for (int j = 0; j < n; j++) {
-					val += gate->fetchValue(2 * i + 1, j) * *qubits[j / 2]->fetch(j % 2);
-				}
-				*qubit->fetch(1) = val;
+				*qubit->fetch(1) = val2;
 			}
 		}
 	}
@@ -138,4 +141,51 @@ void CPUQuantumProcessor::calculate()
 std::map<std::string, std::vector<Qubit*>> CPUQuantumProcessor::qubitMapfetchQubitValues()
 {
 	return circuit_->returnResults();
+}
+
+void CPUDevice::loadRegister(Register registerx)
+{
+	if (registerx.isQuantum()) {
+		QuantumRegister qReg = registerx.getQuantumRegister();
+		std::string regName = qReg.getIdentifier();
+		int width = qReg.getWidth();
+		std::vector<Qubit*> registerQubits;
+		for (int i = 0; i < width; i++) {
+			registerQubits.push_back(qubitFactory->generateQubit());
+		}
+		registerMap.insert(std::pair<std::string, std::vector<Qubit*>>(regName, registerQubits));
+	}
+}
+
+void CPUDevice::transferQubitMap()
+{
+	quantumCircuit->loadQubitMap(registerMap);
+}
+
+void CPUDevice::loadConcurrentBlock(ConcurrentBlock block)
+{
+	quantumCircuit->loadBlock(block);
+}
+
+void CPUDevice::runSimulation()
+{
+	quantumProcessor->loadCircuit(quantumCircuit);
+	quantumProcessor->calculate();
+}
+
+void CPUDevice::run(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks)
+{
+	for (auto reg : registers) {
+		loadRegister(reg);
+	}
+	transferQubitMap();
+	for (auto block : blocks) {
+		loadConcurrentBlock(block);
+	}
+	runSimulation();
+}
+
+std::map<std::string, std::vector<Qubit*>> CPUDevice::revealQuantumState()
+{
+	return quantumProcessor->qubitMapfetchQubitValues();
 }

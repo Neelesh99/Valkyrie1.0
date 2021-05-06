@@ -2,6 +2,7 @@
 #include "BaseTypes.h"
 #include <map>
 #include <string>
+#include <iostream>
 
 class AbstractQubitFactory {
 private: 
@@ -43,9 +44,13 @@ class AbstractDevice {
 private:
 	DeviceType type_;
 public:
-	virtual void loadRegister(Register register) = 0;
+	virtual void loadRegister(Register registerx) = 0;
+	virtual void transferQubitMap() = 0;
 	virtual void loadConcurrentBlock(ConcurrentBlock block) = 0;
 	virtual void runSimulation() = 0;
-	virtual std::vector<Qubit> revealQuantumState() = 0;
-	virtual std::vector<int> measure() = 0;
+	virtual void run(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks) = 0;
+	virtual std::map<std::string, std::vector<Qubit*>> revealQuantumState() = 0;
+	// virtual std::vector<int> measure() = 0; next iteration
 };
+
+
