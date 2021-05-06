@@ -1,6 +1,12 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <complex>
+
+enum DeviceType {
+	CPU_,
+	GPU_
+};
 
 class HeaderData {
 private:
@@ -99,7 +105,16 @@ public:
 		locations_.push_back(location);
 	}
 	int getGateDim() {
-		return registerIdentifiers_.size() + locations_.size() - 1;
+		return registerIdentifiers_.size();
+	}
+	std::vector<std::string> getRegisters() {
+		return registerIdentifiers_;
+	}
+	std::vector<int> getLocations() {
+		return locations_;
+	}
+	GateRequestType getGateType() {
+		return gateType_;
 	}
 };
 
@@ -123,4 +138,70 @@ public:
 	std::vector<GateRequest> getGates() {
 		return gates_;
 	}
+};
+
+class Qubit {
+private:
+	std::complex<double>* s_0;
+	std::complex<double>* s_1;
+public:
+	Qubit(std::complex<double>* s0, std::complex<double>* s1) {
+		s_0 = s0;
+		s_1 = s1;
+	}
+
+	std::complex<double>* fetch(int i) {
+		if (i == 0) {
+			return s_0;
+		}
+		else {
+			return s_1;
+		}
+	}
+};
+
+class Gate {
+private:
+	std::complex<double>* gateArray_;
+	int m_;	// dimensions
+	int n_;
+	bool isBarrier_;
+public:
+	Gate(int m, int n, std::complex<double>* gateArray) {
+		m_ = m;
+		n_ = n;
+	}
+
+	Gate(bool barrier) {
+		isBarrier_ = barrier;
+	}
+
+	std::complex<double>* fetchValue(int x, int y) {
+		if (x < m_ && y < n_) {
+			int index = x * m_ + y;
+			return &gateArray_[index];
+		}
+		else {
+			return nullptr;
+		}
+	}
+
+};
+
+class Calculation {
+private:
+	Gate* gate_;
+	std::complex<double>* qubitValues_;
+public:
+	Calculation(Gate* gate, std::complex<double>* qubitVals) {
+		gate_ = gate;
+		qubitValues_ = qubitVals;
+	}
+	Gate* getGate() {
+		return gate_;
+	}
+	std::complex<double>* getQubitValue(int i) {
+		return &qubitValues_[i];
+	}
+
 };

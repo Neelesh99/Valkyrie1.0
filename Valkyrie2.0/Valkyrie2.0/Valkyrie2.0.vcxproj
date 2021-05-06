@@ -82,8 +82,10 @@
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="libs\AbstractDevice.h" />
     <ClInclude Include="libs\antlr4-runtime.h" />
     <ClInclude Include="libs\BaseTypes.h" />
+    <ClInclude Include="libs\CPUDevice.h" />
     <ClInclude Include="libs\Exceptions.h" />
     <ClInclude Include="libs\qasm2BaseVisitor.h" />
     <ClInclude Include="libs\qasm2Lexer.h" />
@@ -98,6 +100,7 @@
     <None Include="libs\qasm2Lexer.tokens" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="libs\CPUDevice.cpp" />
     <ClCompile Include="libs\qasm2BaseVisitor.cpp" />
     <ClCompile Include="libs\qasm2Lexer.cpp" />
     <ClCompile Include="libs\qasm2Parser.cpp" />
