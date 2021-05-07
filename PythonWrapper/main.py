@@ -12,7 +12,7 @@ def print_hi(name):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    os.system("Valk\\Debug")
+    os.system("Valk\\Valkyrie2.0.exe")
     print_hi('PyCharm')
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
