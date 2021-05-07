@@ -80,6 +80,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="libs\GPUDevice.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libs\AbstractDevice.h" />
@@ -87,6 +88,8 @@
     <ClInclude Include="libs\BaseTypes.h" />
     <ClInclude Include="libs\CPUDevice.h" />
     <ClInclude Include="libs\Exceptions.h" />
+    <ClInclude Include="libs\GPUCompute.cuh" />
+    <ClInclude Include="libs\GPUDevice.cuh" />
     <ClInclude Include="libs\qasm2BaseVisitor.h" />
     <ClInclude Include="libs\qasm2Lexer.h" />
     <ClInclude Include="libs\qasm2Parser.h" />

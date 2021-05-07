@@ -8,6 +8,7 @@
 #include "libs/qasm2BaseVisitor.h"
 #include "libs/staging.h"
 #include "libs/CPUDevice.h"
+#include "libs/GPUDevice.cuh"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -73,6 +74,9 @@ int main()
     CPUDevice device = CPUDevice();
     device.run(stage.getRegisters(), blocks);
     device.prettyPrintQubitStates(device.revealQuantumState());
+    GPUDevice deviceG = GPUDevice();
+    deviceG.run(stage.getRegisters(), blocks);
+    deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
     DisplayHeader();
     return 0;
 }
