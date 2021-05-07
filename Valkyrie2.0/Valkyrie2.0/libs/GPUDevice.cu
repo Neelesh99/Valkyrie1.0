@@ -22,8 +22,6 @@ std::vector<std::vector<std::complex<double>>> getGateMatrixGPU(GateRequestType 
 }
 
 
-
-
 Qubit* GPUQubitFactory::generateQubit()
 {
 	// Allocate heap memory for Qubit values

@@ -18,6 +18,12 @@
 
 using namespace antlr4;
 
+std::string getexepath()
+{
+    char result[MAX_PATH];
+    return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
+}
+
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
 void DisplayHeader();
 
@@ -53,7 +59,7 @@ int main()
         fprintf(stderr, "cudaDeviceReset failed!");
         return 1;
     }
-
+    std::cout << getexepath() << std::endl;
     std::ifstream stream;
     // h q[0];
     stream.open("output.qasm");
