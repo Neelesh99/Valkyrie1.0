@@ -2,6 +2,7 @@
 #include "cuComplex.h"
 #include <cmath>
 #include <stdio.h>
+#include "GPUCompute.cuh"
 
 using namespace std::complex_literals;
 const double ROOT2INV = 1.0 / std::pow(2, 0.5);
@@ -24,14 +25,7 @@ cuDoubleComplex convertQubitComplex(std::complex<double> input) {
 	return make_cuDoubleComplex(input.real(), input.imag());
 }
 
-__global__ void matrixMul(cuDoubleComplex* output, const cuDoubleComplex* input, const cuDoubleComplex* gate, const int m) {
-	int loc = threadIdx.x;
-	output[loc] = make_cuDoubleComplex(0,0);
-	for (int i = 0; i < m; i++) {
-		output[loc] = cuCadd(cuCmul(input[i], gate[m * loc + i]), output[loc]);
-		//printf("Thread: %d, i = %d, value of multiplication: %f current value of output[loc]: %f \n", loc, i, cuCmul(input[i], gate[m * loc + i]).x, output[loc].x);
-	}
-}
+
 
 Qubit* GPUQubitFactory::generateQubit()
 {
@@ -194,7 +188,7 @@ void GPUQuantumProcessor::calculate()
 				}
 
 				// Run matrix calc kernel
-				matrixMul << <1, 2 >> > (afterGate, beforeGate, gateValues, 2);
+				ValkGPULib::matrixMul << <1, 2 >> > (afterGate, beforeGate, gateValues, 2);
 
 				// Check for any errors launching the kernel
 				cudaStatus = cudaGetLastError();
