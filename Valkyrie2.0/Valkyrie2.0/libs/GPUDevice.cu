@@ -1,5 +1,7 @@
 ﻿#include "GPUDevice.cuh"
+#include "cuComplex.h"
 #include <cmath>
+#include <stdio.h>
 
 using namespace std::complex_literals;
 const double ROOT2INV = 1.0 / std::pow(2, 0.5);
@@ -15,6 +17,19 @@ std::vector<std::vector<std::complex<double>>> getGateMatrixGPU(GateRequestType 
 	case cx:
 		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 0, 0, 1, 0 } };
 		break;
+	}
+}
+
+cuDoubleComplex convertQubitComplex(std::complex<double> input) {
+	return make_cuDoubleComplex(input.real(), input.imag());
+}
+
+__global__ void matrixMul(cuDoubleComplex* output, const cuDoubleComplex* input, const cuDoubleComplex* gate, const int m) {
+	int loc = threadIdx.x;
+	output[loc] = make_cuDoubleComplex(0,0);
+	for (int i = 0; i < m; i++) {
+		output[loc] = cuCadd(cuCmul(input[i], gate[m * loc + i]), output[loc]);
+		//printf("Thread: %d, i = %d, value of multiplication: %f current value of output[loc]: %f \n", loc, i, cuCmul(input[i], gate[m * loc + i]).x, output[loc].x);
 	}
 }
 
@@ -116,6 +131,11 @@ void GPUQuantumProcessor::loadCircuit(AbstractQuantumCircuit* circuit)
 
 void GPUQuantumProcessor::calculate()
 {
+	// Generate initial arrays
+	cuDoubleComplex* initialValues;
+	cuDoubleComplex* beforeGate;
+	cuDoubleComplex* gateValues;
+	cuDoubleComplex* afterGate;
 	while (!circuit_->checkComplete()) {
 		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
 		for (auto calc : calcBlock) {	// parallelisation next iteration
@@ -123,9 +143,85 @@ void GPUQuantumProcessor::calculate()
 			int m = gate->getM();
 			int n = gate->getN();
 			int qubitN = m / 2;
+
+			cudaError_t cudaStatus;			
+			// Allocate shared space
+			cudaStatus = cudaMalloc((void**)&initialValues, m * sizeof(cuDoubleComplex));
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed!");
+				goto Error;
+			}
+			cudaStatus = cudaMalloc((void**)&beforeGate, m * sizeof(cuDoubleComplex));
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed!");
+				goto Error;
+			}
+			cudaStatus = cudaMalloc((void**)&afterGate, m * sizeof(cuDoubleComplex));
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed!");
+				goto Error;
+			}
+			cudaStatus = cudaMalloc((void**)&gateValues, (m*n) * sizeof(cuDoubleComplex));
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed!");
+				goto Error;
+			}
+
+			std::vector<Qubit*> qubits = calc.getQubits();
+
+			// Generate Host side arrays for qubit values
+			if (m == 2) {
+				const int arraySize = 2;
+				const cuDoubleComplex before[arraySize] = { convertQubitComplex(*(qubits[0]->fetch(0))), convertQubitComplex(*qubits[0]->fetch(1)) };
+				const cuDoubleComplex gateVal[4] = { convertQubitComplex(gate->fetchValue(0,0)), convertQubitComplex(gate->fetchValue(0,1)), convertQubitComplex(gate->fetchValue(1,0)), convertQubitComplex(gate->fetchValue(1,1)) };
+				cuDoubleComplex after[arraySize] = { 0 };
+
+				// Copy input vectors into CUDA memory
+				cudaStatus = cudaMemcpy(beforeGate, before, m * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+				if (cudaStatus != cudaSuccess) {
+					fprintf(stderr, "cudaMemcpy failed!");
+					goto Error;
+				}
+				cudaStatus = cudaMemcpy(gateValues, gateVal, (m*n) * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+				if (cudaStatus != cudaSuccess) {
+					fprintf(stderr, "cudaMemcpy failed!");
+					goto Error;
+				}
+				cudaStatus = cudaMemcpy(afterGate, after, m * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+				if (cudaStatus != cudaSuccess) {
+					fprintf(stderr, "cudaMemcpy failed!");
+					goto Error;
+				}
+
+				// Run matrix calc kernel
+				matrixMul << <1, 2 >> > (afterGate, beforeGate, gateValues, 2);
+
+				// Check for any errors launching the kernel
+				cudaStatus = cudaGetLastError();
+				if (cudaStatus != cudaSuccess) {
+					fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+					goto Error;
+				}
+
+				// cudaDeviceSynchronize waits for the kernel to finish, and returns
+				// any errors encountered during the launch.
+				cudaStatus = cudaDeviceSynchronize();
+				if (cudaStatus != cudaSuccess) {
+					fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+					goto Error;
+				}
+
+				// Copy output vector from GPU buffer to host memory.
+				cudaStatus = cudaMemcpy(after, afterGate, m * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+				if (cudaStatus != cudaSuccess) {
+					fprintf(stderr, "cudaMemcpy failed!");
+					goto Error;
+				}
+			}
+
 			std::vector<std::complex<double>> qubitValsBefore_;
 			std::vector<std::complex<double>> qubitValsAfter_;
-			std::vector<Qubit*> qubits = calc.getQubits();
+			
 			if (m == 2) {
 				qubitValsBefore_.push_back(*qubits[0]->fetch(0));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(1));
@@ -159,6 +255,11 @@ void GPUQuantumProcessor::calculate()
 			}
 		}
 	}
+Error:
+	cudaFree(initialValues);
+	cudaFree(beforeGate);
+	cudaFree(afterGate);
+	cudaFree(gateValues);
 }
 
 std::map<std::string, std::vector<Qubit*>> GPUQuantumProcessor::qubitMapfetchQubitValues()
