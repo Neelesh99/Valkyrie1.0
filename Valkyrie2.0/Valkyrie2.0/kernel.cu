@@ -13,6 +13,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <chrono>
 
 #include <stdio.h>
 
@@ -31,6 +32,54 @@ __global__ void addKernel(int *c, const int *a, const int *b)
 {
     int i = threadIdx.x;
     c[i] = a[i] + b[i];
+}
+
+void timeCPUExecution() {
+    auto begin = std::chrono::high_resolution_clock::now();
+    std::ifstream stream;    
+    stream.open("output.qasm");
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    Stager stage = Stager();
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    CPUDevice device = CPUDevice();
+    device.run(stage.getRegisters(), blocks);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+}
+
+void timeGPUExecution() {
+    auto begin = std::chrono::high_resolution_clock::now();
+    std::ifstream stream;
+    stream.open("output.qasm");
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    Stager stage = Stager();
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    GPUDevice deviceG = GPUDevice();
+    deviceG.run(stage.getRegisters(), blocks);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;    
 }
 
 
@@ -59,9 +108,9 @@ int main()
         fprintf(stderr, "cudaDeviceReset failed!");
         return 1;
     }
-    std::cout << getexepath() << std::endl;
+    /*std::cout << getexepath() << std::endl;
     std::ifstream stream;
-    // h q[0];
+     h q[0];
     stream.open("output.qasm");
     ANTLRInputStream input(stream);
 
@@ -72,18 +121,21 @@ int main()
     qasm2Parser::MainprogContext* tree = parser.mainprog();
 
     qasm2BaseVisitor visitor;
-    visitor.visitMainprog(tree);
+    visitor.visitMainprog(tree);    
     std::vector<Register> registers = visitor.getRegisters();
     std::vector<GateRequest> gateRequests = visitor.getGates();
-    Stager stage = Stager();
-    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    Stager stage = Stager();    
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);    
     CPUDevice device = CPUDevice();
     device.run(stage.getRegisters(), blocks);
-    device.prettyPrintQubitStates(device.revealQuantumState());
+    device.prettyPrintQubitStates(device.revealQuantumState());    
     GPUDevice deviceG = GPUDevice();
-    deviceG.run(stage.getRegisters(), blocks);
+    deviceG.run(stage.getRegisters(), blocks);    
     deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
-    DisplayHeader();
+    DisplayHeader();*/
+    for (int i = 0; i < 21; i++) {
+        timeGPUExecution();
+    }
     return 0;
 }
 

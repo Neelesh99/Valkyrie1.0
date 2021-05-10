@@ -109,6 +109,7 @@ private:
 	GateRequestType gateType_;
 	std::vector<std::string> registerIdentifiers_;
 	std::vector<int> locations_;
+	std::vector<double> parameters_;
 public:
 	GateRequest(GateRequestType type) {
 		gateType_ = type;
@@ -116,6 +117,12 @@ public:
 	void addressQubit(std::string registerID, int location) {
 		registerIdentifiers_.push_back(registerID);
 		locations_.push_back(location);
+	}
+	void setParameters(std::vector<double> params) {
+		parameters_ = params;
+	}
+	void addParameter(double value) {
+		parameters_.push_back(value);
 	}
 	int getGateDim() {
 		return registerIdentifiers_.size();

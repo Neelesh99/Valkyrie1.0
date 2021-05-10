@@ -14,6 +14,7 @@ struct idLocationPairs {
     std::vector<int> locations;
 };
 
+const double PI = 3.1415926535;
 
 
 /**
@@ -130,10 +131,14 @@ public:
   }
 
   virtual antlrcpp::Any visitUop(qasm2Parser::UopContext *ctx) override {
+      if (ctx->getStart()->getText() == "U") {
+          if (ctx->explist()) {
+              
+          }
+      }
       if (ctx->ID()) {
           std::string uopGate = ctx->ID()->getText();
-          if (ctx->anylist()) {
-              
+          if (ctx->anylist()) {              
               if (ctx->anylist()->mixedlist()) {
                   idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
                   GateRequest gate = compileGateRequest(uopGate, idLoc);
@@ -183,10 +188,58 @@ public:
   }
 
   virtual antlrcpp::Any visitExplist(qasm2Parser::ExplistContext *ctx) override {
-    return visitChildren(ctx);
+      std::vector<double> values;
+      for (auto exp : ctx->exp()) {
+          double value = visitExp(exp);
+          values.push_back(value);
+      }
+      return values;
   }
 
   virtual antlrcpp::Any visitExp(qasm2Parser::ExpContext *ctx) override {
+      if (!ctx->unaryop()) {
+          if (!ctx->ID()) {
+              std::vector<qasm2Parser::ExpContext*> subexpressions = ctx->exp();
+              if (subexpressions.size() == 0) {
+                  if (ctx->getStart()->getText() == "pi") {
+                      return PI;
+                  }
+                  double value = 0;
+                  if (ctx->REAL()) {
+                      std::string unparsed = ctx->REAL()->getText();
+                      value = std::stod(unparsed);
+                  }
+                  else if (ctx->INT()) {
+                      std::string unparsed = ctx->INT()->getText();
+                      value = std::stod(unparsed);
+                  }
+                  return value;
+              }
+              if (subexpressions.size() == 1) {
+                  if (ctx->getStart()->getText() == "-") {
+                      return -1 * visitExp(subexpressions[0]).as<double>();
+                  }
+                  else {
+                      return visitExp(subexpressions[0]);
+                  }
+              }
+              if (subexpressions.size() == 2) {
+                  std::string operator_ = ctx->getToken(sizeof(antlr4::Token), 1)->getText();
+                  if (operator_ == "+") {
+                      return visitExp(subexpressions[0]).as<double>() + visitExp(subexpressions[1]).as<double>();
+                  }
+                  if (operator_ == "-") {
+                      return visitExp(subexpressions[0]).as<double>() - visitExp(subexpressions[1]).as<double>();
+                  }
+                  if (operator_ == "*") {
+                      return visitExp(subexpressions[0]).as<double>() * visitExp(subexpressions[1]).as<double>();
+                  }
+                  if (operator_ == "/") {
+                      return visitExp(subexpressions[0]).as<double>() / visitExp(subexpressions[1]).as<double>();
+                  }
+              }
+          }
+      }
     return visitChildren(ctx);
   }
 
