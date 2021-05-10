@@ -21,7 +21,8 @@ public:
 
 enum RegisterType {
 	quantum_,
-	classical_
+	classical_,
+	invalid_
 };
 
 
@@ -88,6 +89,15 @@ public:
 		return cReg_;
 	}
 
+	std::string getName() {
+		if (regType_ == quantum_) {
+			return qReg_.getIdentifier();
+		}
+		else {
+			return cReg_.getIdentifier();
+		}
+	}
+
 	bool isQuantum() {
 		return regType_ == quantum_;
 	}
@@ -135,6 +145,9 @@ public:
 	}
 	GateRequestType getGateType() {
 		return gateType_;
+	}
+	std::vector<double> getParameters() {
+		return parameters_;
 	}
 };
 
@@ -232,3 +245,5 @@ public:
 		return qubitValues_;
 	}
 };
+
+

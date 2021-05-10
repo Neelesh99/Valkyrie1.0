@@ -134,7 +134,7 @@ int main()
     deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
     DisplayHeader();*/
     for (int i = 0; i < 21; i++) {
-        timeGPUExecution();
+        timeCPUExecution();
     }
     return 0;
 }

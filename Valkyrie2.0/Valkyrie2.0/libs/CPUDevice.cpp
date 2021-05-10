@@ -1,10 +1,15 @@
+#pragma once
 #include "CPUDevice.h"
 #include <cmath>
+#include "GateUtilitiesCPU.h"
 
 using namespace std::complex_literals;
 const double ROOT2INV = 1.0 / std::pow(2, 0.5);
 
-std::vector<std::vector<std::complex<double>>> getGateMatrix(GateRequestType gateType) {
+
+
+std::vector<std::vector<std::complex<double>>> getGateMatrix(GateRequest gate) {
+	GateRequestType gateType = gate.getGateType();
 	switch (gateType) {
 	case I:
 		return std::vector<std::vector<std::complex<double>>> { {1, 0}, {0, 1} };
@@ -13,6 +18,12 @@ std::vector<std::vector<std::complex<double>>> getGateMatrix(GateRequestType gat
 		return std::vector<std::vector<std::complex<double>>> { {ROOT2INV, ROOT2INV}, {ROOT2INV, -1.0 * ROOT2INV} };
 		break;
 	case cx:
+		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 0, 0, 1, 0 } };
+		break;
+	case U:
+		return buildU3GateCPU(gate);
+		break;
+	case CX:
 		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 0, 0, 1, 0 } };
 		break;
 	}
@@ -44,7 +55,7 @@ CPUQubitFactory::~CPUQubitFactory()
 
 Gate* CPUGateFactory::generateGate(GateRequest request)
 {
-	std::vector<std::vector<std::complex<double>>> gateMatrix = getGateMatrix(request.getGateType());
+	std::vector<std::vector<std::complex<double>>> gateMatrix = getGateMatrix(request);
 	int gateM = gateMatrix.size();
 	int gateN = gateMatrix[0].size();
 
