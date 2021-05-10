@@ -184,11 +184,11 @@ public:
         idLocationPairs pairs1 = visitArgument(ctx->argument()[0]).as<idLocationPairs>();
         idLocationPairs pairs2 = visitArgument(ctx->argument()[1]).as<idLocationPairs>();
         idLocationPairs combinedPairs;
-        for (int i = 0; pairs1.identifiers.size(); i++) {
+        for (int i = 0; i < pairs1.identifiers.size(); i++) {
             combinedPairs.identifiers.push_back(pairs1.identifiers[i]);
             combinedPairs.locations.push_back(pairs1.locations[i]);
         }
-        for (int i = 0; pairs2.identifiers.size(); i++) {
+        for (int i = 0; i < pairs2.identifiers.size(); i++) {
             combinedPairs.identifiers.push_back(pairs2.identifiers[i]);
             combinedPairs.locations.push_back(pairs2.locations[i]);
         }
