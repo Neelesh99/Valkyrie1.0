@@ -1,7 +1,7 @@
 #pragma once
 #include "BaseTypes.h"
 
-const double IMAGCPU = std::sqrt(-1);
+const std::complex<double> IMAGCPU(0,1);
 
 std::vector<std::vector<std::complex<double>>> buildU3GateCPU(GateRequest gate) {
 	double theta = gate.getParameters()[0];

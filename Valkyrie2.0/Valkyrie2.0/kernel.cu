@@ -56,6 +56,7 @@ void timeCPUExecution() {
     device.run(stage.getRegisters(), blocks);
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+    device.prettyPrintQubitStates(device.revealQuantumState());
 }
 
 void timeGPUExecution() {
@@ -79,7 +80,8 @@ void timeGPUExecution() {
     GPUDevice deviceG = GPUDevice();
     deviceG.run(stage.getRegisters(), blocks);
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;    
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
+    deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
 }
 
 
@@ -133,8 +135,8 @@ int main()
     deviceG.run(stage.getRegisters(), blocks);    
     deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
     DisplayHeader();*/
-    for (int i = 0; i < 21; i++) {
-        timeCPUExecution();
+    for (int i = 0; i < 1; i++) {
+        timeGPUExecution();
     }
     return 0;
 }

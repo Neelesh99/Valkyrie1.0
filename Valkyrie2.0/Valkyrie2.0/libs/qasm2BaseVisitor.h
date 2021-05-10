@@ -154,6 +154,7 @@ public:
   }
 
   virtual antlrcpp::Any visitGatedecl(qasm2Parser::GatedeclContext *ctx) override {
+      //std::string gateName = 
     return visitChildren(ctx);
   }
 
@@ -167,6 +168,7 @@ public:
 
   virtual antlrcpp::Any visitUop(qasm2Parser::UopContext *ctx) override {
       if (ctx->getStart()->getText() == "U") {
+          std::cout << ctx->getText() << std::endl;
           if (ctx->explist()) {
               std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
               if (gateArguments.size() == 3) {

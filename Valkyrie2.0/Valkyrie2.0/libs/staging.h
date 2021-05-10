@@ -35,6 +35,9 @@ private:
 				block = ConcurrentBlock(0);
 			}
 		}
+		if (block.getCount() > 0) {
+			blocks_.push_back(block);
+		}
 		return true;
 	}
 	
