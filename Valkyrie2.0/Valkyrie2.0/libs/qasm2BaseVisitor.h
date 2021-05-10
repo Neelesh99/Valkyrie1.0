@@ -197,13 +197,25 @@ public:
       }
       if (ctx->ID()) {
           std::string uopGate = ctx->ID()->getText();
-          if (ctx->anylist()) {              
-              if (ctx->anylist()->mixedlist()) {
-                  idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                  GateRequest gate = compileGateRequest(uopGate, idLoc);
-                  gates_.push_back(gate);
+          if (ctx->explist()) {
+              std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
+              if (ctx->anylist()) {
+                  if (ctx->anylist()->mixedlist()) {
+                      idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
+                      GateRequest gate = compileGateRequest(uopGate, gateArguments, idLoc);
+                      gates_.push_back(gate);
+                  }
               }
           }
+          else {
+              if (ctx->anylist()) {
+                  if (ctx->anylist()->mixedlist()) {
+                      idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
+                      GateRequest gate = compileGateRequest(uopGate, idLoc);
+                      gates_.push_back(gate);
+                  }
+              }
+          }          
       }
 
     return 0;
