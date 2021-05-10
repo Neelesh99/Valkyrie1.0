@@ -99,6 +99,7 @@
     <ClInclude Include="libs\GateUtilitiesGPU.cuh" />
     <ClInclude Include="libs\GPUCompute.cuh" />
     <ClInclude Include="libs\GPUDevice.cuh" />
+    <ClInclude Include="libs\ParsingGateUtilities.h" />
     <ClInclude Include="libs\qasm2BaseVisitor.h" />
     <ClInclude Include="libs\qasm2Lexer.h" />
     <ClInclude Include="libs\qasm2Parser.h" />

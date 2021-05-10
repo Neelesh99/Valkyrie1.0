@@ -111,20 +111,58 @@ enum GateRequestType {
 	CX,
 	h,
 	cx,
+	u3,
+	u2,
+	u1,
+	id,
+	u0,
+	u,
+	p,
+	x,
+	y,
+	z,
+	s,
+	sdg,
+	t,
+	tdg,
+	rx,
+	ry,
+	rz,
+	sx,
+	sxdg,
+	cz,
+	cy,
+	swap,
+	ch,
+	ccx,
+	cswap,
+	crx,
+	cry,
+	crz,
+	cu1,
+	cp,
+	cu3,
+	csx,
+	cu,
+	rxx,
+	rzz,
+	rccx,
+	rc3x,
+	c3x,
+	c3sqrtx,
+	c4x,
 	CUSTOM
 };
 
 class GateRequest {
 private:
 	GateRequestType gateType_;
-	// For CUSTOM gates
-	std::string gateID_;
-	std::vector<GateRequest> subGates_;
-	//
 	std::vector<std::string> registerIdentifiers_;
 	std::vector<int> locations_;
 	std::vector<double> parameters_;
+
 public:
+	GateRequest(){}
 	GateRequest(GateRequestType type) {
 		gateType_ = type;
 	}
@@ -137,12 +175,6 @@ public:
 	}
 	void addParameter(double value) {
 		parameters_.push_back(value);
-	}
-	void setGateID(std::string gateID) {
-		gateID_ = gateID;
-	}
-	void addCustomGate(GateRequest gate) {
-		subGates_.push_back(gate);
 	}
 	int getGateDim() {
 		return registerIdentifiers_.size();
@@ -158,12 +190,6 @@ public:
 	}
 	std::vector<double> getParameters() {
 		return parameters_;
-	}
-	std::string getGateID() {
-		return gateID_;
-	}
-	std::vector<GateRequest> getSubGates() {
-		return subGates_;
 	}
 };
 

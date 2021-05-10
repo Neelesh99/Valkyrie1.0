@@ -36,6 +36,7 @@ private:
     int debugLevel = 1;
     std::vector<Register> registers_;
     std::vector<GateRequest> gates_;
+    std::vector<GateRequest> customGates_;
     GateRequestType getGateTypeS(std::string gateType) {
         GateRequestType gtType;
         if (gateType == "U") {
@@ -154,7 +155,6 @@ public:
   }
 
   virtual antlrcpp::Any visitGatedecl(qasm2Parser::GatedeclContext *ctx) override {
-      //std::string gateName = 
     return visitChildren(ctx);
   }
 
