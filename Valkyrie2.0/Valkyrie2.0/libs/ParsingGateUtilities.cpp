@@ -2,6 +2,35 @@
 
 const double PI = 3.1415926535;
 
+std::vector<GateRequest> attachGateRequests(std::vector<GateRequest> initial, std::vector<GateRequest> addition) {
+    for (int i = 0; i < addition.size(); i++) {
+        initial.push_back(addition[i]);
+    }
+    return initial;
+}
+
+idLocationPairs fetchIDLoc(idLocationPairs input, int i) {
+    if (i >= input.getSize()) {
+        return input;
+    }
+    idLocationPairs x;
+    x.identifiers.push_back(input.identifiers[i]);
+    x.locations.push_back(input.locations[i]);
+    return x;
+}
+
+idLocationPairs zipIDLoc(idLocationPairs inp1, idLocationPairs inp2) {
+    idLocationPairs x;
+    x.identifiers = inp1.identifiers;
+    x.locations = inp1.locations;
+
+    for (int i = 0; i < inp2.getSize(); i++) {
+        x.identifiers.push_back(inp2.identifiers[i]);
+        x.locations.push_back(inp2.locations[i]);
+    }
+    return x;
+}
+
 GateRequestType getGateTypeS(std::string gateType) {
     GateRequestType gtType;
     if (gateType == "U") {
@@ -178,6 +207,113 @@ std::vector<GateRequest> compileRYGate(double theta, idLocationPairs idLoc) {
 
 std::vector<GateRequest> compileRZGate(double phi, idLocationPairs idLoc) {
     return compileU1Gate(-PI / 4, idLoc);
+}
+
+// Standard User Defined Gates //
+std::vector<GateRequest> compileSXGate(idLocationPairs idLoc) {
+    std::vector<GateRequest> req = compileSDGGate(idLoc);
+    req = attachGateRequests(req, compileHGate(idLoc));
+    req = attachGateRequests(req, compileSDGGate(idLoc));
+    return req;
+}
+
+std::vector<GateRequest> compileSXDGGate(idLocationPairs idLoc) {
+    std::vector<GateRequest> req = compileSGate(idLoc);
+    req = attachGateRequests(req, compileHGate(idLoc));
+    req = attachGateRequests(req, compileSGate(idLoc));
+    return req;
+}
+
+std::vector<GateRequest> compileCZGate(idLocationPairs idLoc) {
+    if (idLoc.getSize() != 2) {
+        return std::vector<GateRequest>();
+    }
+    idLocationPairs pairB;
+    pairB.identifiers.push_back(idLoc.identifiers[1]);
+    pairB.locations.push_back(idLoc.locations[1]);
+    std::vector<GateRequest> req = compileHGate(pairB);
+    req = attachGateRequests(req, compileCXGate(idLoc));
+    req = attachGateRequests(req, compileHGate(pairB));
+    return req;
+}
+
+std::vector<GateRequest> compileCYGate(idLocationPairs idLoc) {
+    if (idLoc.getSize() != 2) {
+        return std::vector<GateRequest>();
+    }
+    idLocationPairs pairB;
+    pairB.identifiers.push_back(idLoc.identifiers[1]);
+    pairB.locations.push_back(idLoc.locations[1]);
+    std::vector<GateRequest> req = compileSDGGate(pairB);
+    req = attachGateRequests(req, compileCXGate(idLoc));
+    req = attachGateRequests(req, compileSGate(pairB));
+    return req;
+}
+
+std::vector<GateRequest> compileSwapGate(idLocationPairs idLoc) {
+    if (idLoc.getSize() != 2) {
+        return std::vector<GateRequest>();
+    }
+    idLocationPairs swapped;
+    swapped.identifiers.push_back(idLoc.identifiers[1]);
+    swapped.identifiers.push_back(idLoc.identifiers[0]);
+    swapped.locations.push_back(idLoc.locations[1]);
+    swapped.locations.push_back(idLoc.locations[0]);
+
+    std::vector<GateRequest> req = compileCXGate(idLoc);
+    req = attachGateRequests(req, compileCXGate(swapped));
+    req = attachGateRequests(req, compileCXGate(idLoc));
+    return req;
+}
+
+std::vector<GateRequest> compileCHGate(idLocationPairs idLoc) {
+    if (idLoc.getSize() != 2) {
+        return std::vector<GateRequest>();
+    }
+    idLocationPairs pairA;
+    pairA.identifiers.push_back(idLoc.identifiers[0]);
+    pairA.locations.push_back(idLoc.locations[0]);
+    idLocationPairs pairB;
+    pairB.identifiers.push_back(idLoc.identifiers[1]);
+    pairB.locations.push_back(idLoc.locations[1]);
+
+    std::vector<GateRequest> req = compileHGate(pairB);
+    req = attachGateRequests(req, compileSDGGate(pairB));
+    req = attachGateRequests(req, compileCXGate(idLoc));
+    req = attachGateRequests(req, compileHGate(pairB));
+    req = attachGateRequests(req, compileTGate(pairB));
+    req = attachGateRequests(req, compileCXGate(idLoc));
+    req = attachGateRequests(req, compileTGate(pairB));
+    req = attachGateRequests(req, compileHGate(pairB));
+    req = attachGateRequests(req, compileSGate(pairB));
+    req = attachGateRequests(req, compileXGate(pairB));
+    req = attachGateRequests(req, compileSGate(pairA));
+}
+
+std::vector<GateRequest> compileCCXGate(idLocationPairs idLoc) {
+    if (idLoc.getSize() != 3) {
+        return std::vector<GateRequest>();
+    }
+
+    idLocationPairs pairA = fetchIDLoc(idLoc, 0);
+    idLocationPairs pairB = fetchIDLoc(idLoc, 1);
+    idLocationPairs pairC = fetchIDLoc(idLoc, 2);
+
+    std::vector<GateRequest> req = compileHGate(pairC);
+    req = attachGateRequests(req, compileCXGate(zipIDLoc(pairB, pairC)));
+    req = attachGateRequests(req, compileTDGGate(pairC));
+    req = attachGateRequests(req, compileCXGate(zipIDLoc(pairA, pairC)));
+    req = attachGateRequests(req, compileTGate(pairC));
+    req = attachGateRequests(req, compileCXGate(zipIDLoc(pairB, pairC)));
+    req = attachGateRequests(req, compileTDGGate(pairC));
+    req = attachGateRequests(req, compileCXGate(zipIDLoc(pairA, pairC)));
+    req = attachGateRequests(req, compileTGate(pairB));
+    req = attachGateRequests(req, compileTGate(pairC));
+    req = attachGateRequests(req, compileHGate(pairC));
+    req = attachGateRequests(req, compileCXGate(zipIDLoc(pairA, pairB)));
+    req = attachGateRequests(req, compileTGate(pairA));
+    req = attachGateRequests(req, compileTDGGate(pairB));
+    req = attachGateRequests(req, compileCXGate(zipIDLoc(pairA, pairB)));
 }
 
 GateRequest compileGateRequest(std::string gateType, idLocationPairs idLoc) {
