@@ -50,6 +50,12 @@ private:
         return -1;
     }
 
+    void attachGates(std::vector<GateRequest> gates) {
+        for (int i = 0; i < gates.size(); i++) {
+            gates_.push_back(gates[i]);
+        }
+    }
+
 public:
     
     std::vector<Register> getRegisters() {
@@ -173,8 +179,8 @@ public:
               if (ctx->anylist()) {
                   if (ctx->anylist()->mixedlist()) {
                       idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                      GateRequest gate = compileGateRequest(uopGate, idLoc);
-                      gates_.push_back(gate);
+                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, idLoc);
+                      attachGates(gates);
                   }
               }
           }          

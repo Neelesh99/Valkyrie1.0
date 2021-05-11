@@ -6,6 +6,9 @@
 struct idLocationPairs {
 	std::vector<std::string> identifiers;
 	std::vector<int> locations;
+	int getSize() {
+		return identifiers.size();
+	}
 };
 
 enum DeviceType {
