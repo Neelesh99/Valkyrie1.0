@@ -8,12 +8,10 @@
 #include "qasm2Visitor.h"
 #include "BaseTypes.h"
 #include <cmath>
+#include "ParsingGateUtilities.h"
 
 
-struct idLocationPairs {
-    std::vector<std::string> identifiers;
-    std::vector<int> locations;
-};
+
 
 const double PI = 3.1415926535;
 
@@ -37,44 +35,6 @@ private:
     std::vector<Register> registers_;
     std::vector<GateRequest> gates_;
     std::vector<GateRequest> customGates_;
-    GateRequestType getGateTypeS(std::string gateType) {
-        GateRequestType gtType;
-        if (gateType == "U") {
-            gtType = U;
-        }
-        else if (gateType == "CX") {
-            gtType = CX;
-        }
-        else if (gateType == "h") {
-            gtType = h;
-        }
-        else if (gateType == "cx") {
-            gtType = cx;
-        }
-        else {
-            gtType = CUSTOM;
-        }
-        return gtType;
-    }
-
-    GateRequest compileGateRequest(std::string gateType, idLocationPairs idLoc) {
-        GateRequestType gtType = getGateTypeS(gateType);
-        GateRequest gate(gtType);
-        for (int i = 0; i < idLoc.identifiers.size(); i++) {
-            gate.addressQubit(idLoc.identifiers[i], idLoc.locations[i]);
-        }
-        return gate;
-    }
-
-    GateRequest compileGateRequest(std::string gateType, std::vector<double> params, idLocationPairs idLoc) {
-        GateRequestType gtType = getGateTypeS(gateType);
-        GateRequest gate(gtType);
-        for (int i = 0; i < idLoc.identifiers.size(); i++) {
-            gate.addressQubit(idLoc.identifiers[i], idLoc.locations[i]);
-        }
-        gate.setParameters(params);
-        return gate;
-    }
 
     int findRegWidth(std::string identifier) {
         for (auto register_ : registers_) {

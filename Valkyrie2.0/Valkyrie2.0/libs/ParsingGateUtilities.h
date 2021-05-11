@@ -1,22 +1,10 @@
 #pragma once
 #include "BaseTypes.h"
+#include <map>
 
-//GateRequestType getGateTypeS(std::string gateType) {
-//    GateRequestType gtType;
-//    if (gateType == "U") {
-//        gtType = U;
-//    }
-//    else if (gateType == "CX") {
-//        gtType = CX;
-//    }
-//    else if (gateType == "h") {
-//        gtType = h;
-//    }
-//    else if (gateType == "cx") {
-//        gtType = cx;
-//    }
-//    else {
-//        gtType = CUSTOM;
-//    }
-//    return gtType;
-//}
+GateRequestType getGateTypeS(std::string gateType);
+GateRequestType getGateTypeM(std::string gateType);
+GateRequest compileGateRequest(std::string gateType, idLocationPairs idLoc);
+GateRequest compileGateRequest(std::string gateType, std::vector<double> params, idLocationPairs idLoc);
+std::vector<GateRequest> compileCompoundGateRequest(std::string gateType, idLocationPairs idLoc);
+std::vector<GateRequest> compileCompoundGateRequest(std::string gateType, std::vector<double> params, idLocationPairs idLoc);

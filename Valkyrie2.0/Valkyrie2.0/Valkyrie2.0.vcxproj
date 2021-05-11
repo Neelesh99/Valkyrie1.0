@@ -114,6 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="libs\CPUDevice.cpp" />
+    <ClCompile Include="libs\ParsingGateUtilities.cpp" />
     <ClCompile Include="libs\qasm2BaseVisitor.cpp" />
     <ClCompile Include="libs\qasm2Lexer.cpp" />
     <ClCompile Include="libs\qasm2Parser.cpp" />

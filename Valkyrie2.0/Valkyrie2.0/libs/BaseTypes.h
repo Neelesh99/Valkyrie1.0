@@ -3,6 +3,11 @@
 #include <string>
 #include <complex>
 
+struct idLocationPairs {
+	std::vector<std::string> identifiers;
+	std::vector<int> locations;
+};
+
 enum DeviceType {
 	CPU_,
 	GPU_
