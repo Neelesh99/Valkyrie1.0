@@ -1,0 +1,7 @@
+setup.py
+Valkyrie.egg-info/PKG-INFO
+Valkyrie.egg-info/SOURCES.txt
+Valkyrie.egg-info/dependency_links.txt
+Valkyrie.egg-info/top_level.txt
+ValkyrieFunc/ValkAccesorFunctions.py
+ValkyrieFunc/__init__.py

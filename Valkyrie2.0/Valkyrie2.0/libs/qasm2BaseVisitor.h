@@ -7,13 +7,22 @@
 #include "antlr4-runtime.h"
 #include "qasm2Visitor.h"
 #include "BaseTypes.h"
+#include <cmath>
+#include "ParsingGateUtilities.h"
 
 
-struct idLocationPairs {
-    std::vector<std::string> identifiers;
-    std::vector<int> locations;
+
+
+const double PI = 3.1415926535;
+
+enum unaryOp {
+    SIN_,
+    COS_,
+    TAN_,
+    EXP_,
+    LN_,
+    SQRT_
 };
-
 
 
 /**
@@ -25,34 +34,28 @@ private:
     int debugLevel = 1;
     std::vector<Register> registers_;
     std::vector<GateRequest> gates_;
-    GateRequestType getGateTypeS(std::string gateType) {
-        GateRequestType gtType;
-        if (gateType == "U") {
-            gtType = U;
+    std::vector<GateRequest> customGates_;
+
+    int findRegWidth(std::string identifier) {
+        for (auto register_ : registers_) {
+            if (register_.getName() == identifier) {
+                if (register_.isQuantum()) {
+                    return register_.getQuantumRegister().getWidth();
+                }
+                else {
+                    return register_.getClassicalRegister().getWidth();
+                }
+            }
         }
-        else if (gateType == "CX") {
-            gtType = CX;
-        }
-        else if (gateType == "h") {
-            gtType = h;
-        }
-        else if (gateType == "cx") {
-            gtType = cx;
-        }
-        else {
-            gtType = CUSTOM;
-        }
-        return gtType;
+        return -1;
     }
 
-    GateRequest compileGateRequest(std::string gateType, idLocationPairs idLoc) {
-        GateRequestType gtType = getGateTypeS(gateType);
-        GateRequest gate(gtType);
-        for (int i = 0; i < idLoc.identifiers.size(); i++) {
-            gate.addressQubit(idLoc.identifiers[i], idLoc.locations[i]);
+    void attachGates(std::vector<GateRequest> gates) {
+        for (int i = 0; i < gates.size(); i++) {
+            gates_.push_back(gates[i]);
         }
-        return gate;
     }
+
 public:
     
     std::vector<Register> getRegisters() {
@@ -130,19 +133,60 @@ public:
   }
 
   virtual antlrcpp::Any visitUop(qasm2Parser::UopContext *ctx) override {
-      if (ctx->ID()) {
-          std::string uopGate = ctx->ID()->getText();
-          if (ctx->anylist()) {
-              
-              if (ctx->anylist()->mixedlist()) {
-                  idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                  GateRequest gate = compileGateRequest(uopGate, idLoc);
-                  gates_.push_back(gate);
+      if (ctx->getStart()->getText() == "U") {
+          std::cout << ctx->getText() << std::endl;
+          if (ctx->explist()) {
+              std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
+              if (gateArguments.size() == 3) {
+                  idLocationPairs pairs = visitArgument(ctx->argument()[0]);
+                  if (pairs.identifiers.size() == 1) {
+                      GateRequest gate = compileGateRequest("U", gateArguments, pairs);
+                      gates_.push_back(gate);
+                  }
               }
           }
       }
+      if (ctx->getStart()->getText() == "CX") {
+        idLocationPairs pairs1 = visitArgument(ctx->argument()[0]).as<idLocationPairs>();
+        idLocationPairs pairs2 = visitArgument(ctx->argument()[1]).as<idLocationPairs>();
+        idLocationPairs combinedPairs;
+        for (int i = 0; i < pairs1.identifiers.size(); i++) {
+            combinedPairs.identifiers.push_back(pairs1.identifiers[i]);
+            combinedPairs.locations.push_back(pairs1.locations[i]);
+        }
+        for (int i = 0; i < pairs2.identifiers.size(); i++) {
+            combinedPairs.identifiers.push_back(pairs2.identifiers[i]);
+            combinedPairs.locations.push_back(pairs2.locations[i]);
+        }
+        if (combinedPairs.identifiers.size() == 2) {
+            GateRequest gate = compileGateRequest("CX", combinedPairs);
+            gates_.push_back(gate);
+        }
+      }
+      if (ctx->ID()) {
+          std::string uopGate = ctx->ID()->getText();
+          if (ctx->explist()) {
+              std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
+              if (ctx->anylist()) {
+                  if (ctx->anylist()->mixedlist()) {
+                      idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
+                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, idLoc);
+                      attachGates(gates);
+                  }
+              }
+          }
+          else {
+              if (ctx->anylist()) {
+                  if (ctx->anylist()->mixedlist()) {
+                      idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
+                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, idLoc);
+                      attachGates(gates);
+                  }
+              }
+          }          
+      }
 
-    return visitChildren(ctx);
+    return 0;
   }
 
   virtual antlrcpp::Any visitAnylist(qasm2Parser::AnylistContext *ctx) override {
@@ -179,19 +223,127 @@ public:
   }
 
   virtual antlrcpp::Any visitArgument(qasm2Parser::ArgumentContext *ctx) override {
-    return visitChildren(ctx);
+      idLocationPairs pairs;
+      if (ctx->INT()) {
+          pairs.identifiers.push_back(ctx->ID()->getText());
+          pairs.locations.push_back(std::stoi(ctx->INT()->getText()));
+      }
+      else {
+          std::string register_ = ctx->ID()->getText();
+          int width = findRegWidth(register_);
+          for (int i = 0; i < width; i++) {
+              pairs.identifiers.push_back(register_);
+              pairs.locations.push_back(i);
+          }
+      }
+      return pairs;
   }
 
   virtual antlrcpp::Any visitExplist(qasm2Parser::ExplistContext *ctx) override {
-    return visitChildren(ctx);
+      std::vector<double> values;
+      for (auto exp : ctx->exp()) {
+          double value = visitExp(exp);
+          values.push_back(value);
+      }
+      return values;
   }
 
   virtual antlrcpp::Any visitExp(qasm2Parser::ExpContext *ctx) override {
+      if (!ctx->unaryop()) {
+          if (!ctx->ID()) {
+              std::vector<qasm2Parser::ExpContext*> subexpressions = ctx->exp();
+              if (subexpressions.size() == 0) {
+                  if (ctx->getStart()->getText() == "pi") {
+                      return PI;
+                  }
+                  double value = 0;
+                  if (ctx->REAL()) {
+                      std::string unparsed = ctx->REAL()->getText();
+                      value = std::stod(unparsed);
+                  }
+                  else if (ctx->INT()) {
+                      std::string unparsed = ctx->INT()->getText();
+                      value = std::stod(unparsed);
+                  }
+                  return value;
+              }
+              if (subexpressions.size() == 1) {
+                  if (ctx->getStart()->getText() == "-") {
+                      return -1 * visitExp(subexpressions[0]).as<double>();
+                  }
+                  else {
+                      return visitExp(subexpressions[0]);
+                  }
+              }
+              if (subexpressions.size() == 2) {
+                  std::string operator_ = ctx->getToken(sizeof(antlr4::Token), 1)->getText();
+                  if (operator_ == "+") {
+                      return visitExp(subexpressions[0]).as<double>() + visitExp(subexpressions[1]).as<double>();
+                  }
+                  if (operator_ == "-") {
+                      return visitExp(subexpressions[0]).as<double>() - visitExp(subexpressions[1]).as<double>();
+                  }
+                  if (operator_ == "*") {
+                      return visitExp(subexpressions[0]).as<double>() * visitExp(subexpressions[1]).as<double>();
+                  }
+                  if (operator_ == "/") {
+                      return visitExp(subexpressions[0]).as<double>() / visitExp(subexpressions[1]).as<double>();
+                  }
+              }
+          }
+      }
+      if (ctx->ID()) {
+          double k = 0;
+          return k;
+      }
+      if (ctx->unaryop()) {
+          double expressionVal = visitExp(ctx->exp()[0]);
+          unaryOp operation_ = visitUnaryop(ctx->unaryop()).as<unaryOp>();
+          switch (operation_) {
+          case SIN_:
+              return std::sin(expressionVal);
+              break;
+          case COS_:
+              return std::cos(expressionVal);
+              break;
+          case TAN_:
+              return std::tan(expressionVal);
+              break;
+          case EXP_:
+              return std::exp(expressionVal);
+              break;
+          case LN_:
+              return std::log(expressionVal);
+              break;
+          case SQRT_:
+              return std::pow(expressionVal, 0.5);
+              break;
+          }
+      }
     return visitChildren(ctx);
   }
 
   virtual antlrcpp::Any visitUnaryop(qasm2Parser::UnaryopContext *ctx) override {
-    return visitChildren(ctx);
+      std::string operation_ = ctx->getText();
+      if (operation_ == "sin") {
+          return SIN_;
+      }
+      if (operation_ == "cos") {
+          return COS_;
+      }
+      if (operation_ == "tan") {
+          return TAN_;
+      }
+      if (operation_ == "exp") {
+          return EXP_;
+      }
+      if (operation_ == "ln") {
+          return LN_;
+      }
+      if (operation_ == "sqrt") {
+          return SQRT_;
+      }
+      return SIN_;
   }
 
 

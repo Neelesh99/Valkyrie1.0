@@ -3,6 +3,14 @@
 #include <string>
 #include <complex>
 
+struct idLocationPairs {
+	std::vector<std::string> identifiers;
+	std::vector<int> locations;
+	int getSize() {
+		return identifiers.size();
+	}
+};
+
 enum DeviceType {
 	CPU_,
 	GPU_
@@ -21,7 +29,8 @@ public:
 
 enum RegisterType {
 	quantum_,
-	classical_
+	classical_,
+	invalid_
 };
 
 
@@ -88,6 +97,15 @@ public:
 		return cReg_;
 	}
 
+	std::string getName() {
+		if (regType_ == quantum_) {
+			return qReg_.getIdentifier();
+		}
+		else {
+			return cReg_.getIdentifier();
+		}
+	}
+
 	bool isQuantum() {
 		return regType_ == quantum_;
 	}
@@ -101,6 +119,46 @@ enum GateRequestType {
 	CX,
 	h,
 	cx,
+	u3,
+	u2,
+	u1,
+	id,
+	u0,
+	u,
+	p,
+	x,
+	y,
+	z,
+	s,
+	sdg,
+	t,
+	tdg,
+	rx,
+	ry,
+	rz,
+	sx,
+	sxdg,
+	cz,
+	cy,
+	swap,
+	ch,
+	ccx,
+	cswap,
+	crx,
+	cry,
+	crz,
+	cu1,
+	cp,
+	cu3,
+	csx,
+	cu,
+	rxx,
+	rzz,
+	rccx,
+	rc3x,
+	c3x,
+	c3sqrtx,
+	c4x,
 	CUSTOM
 };
 
@@ -109,13 +167,22 @@ private:
 	GateRequestType gateType_;
 	std::vector<std::string> registerIdentifiers_;
 	std::vector<int> locations_;
+	std::vector<double> parameters_;
+
 public:
+	GateRequest(){}
 	GateRequest(GateRequestType type) {
 		gateType_ = type;
 	}
 	void addressQubit(std::string registerID, int location) {
 		registerIdentifiers_.push_back(registerID);
 		locations_.push_back(location);
+	}
+	void setParameters(std::vector<double> params) {
+		parameters_ = params;
+	}
+	void addParameter(double value) {
+		parameters_.push_back(value);
 	}
 	int getGateDim() {
 		return registerIdentifiers_.size();
@@ -128,6 +195,9 @@ public:
 	}
 	GateRequestType getGateType() {
 		return gateType_;
+	}
+	std::vector<double> getParameters() {
+		return parameters_;
 	}
 };
 
@@ -225,3 +295,5 @@ public:
 		return qubitValues_;
 	}
 };
+
+

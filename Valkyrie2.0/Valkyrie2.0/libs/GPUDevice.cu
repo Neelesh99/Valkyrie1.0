@@ -1,13 +1,18 @@
-﻿#include "GPUDevice.cuh"
+﻿#pragma once
+#include "GPUDevice.cuh"
 #include "cuComplex.h"
 #include <cmath>
 #include <stdio.h>
 #include "GPUCompute.cuh"
+#include "GateUtilitiesGPU.cuh"
 
 using namespace std::complex_literals;
 const double ROOT2INV = 1.0 / std::pow(2, 0.5);
 
-std::vector<std::vector<std::complex<double>>> getGateMatrixGPU(GateRequestType gateType) {
+
+
+std::vector<std::vector<std::complex<double>>> getGateMatrixGPU(GateRequest gate) {
+	GateRequestType gateType = gate.getGateType();
 	switch (gateType) {
 	case I:
 		return std::vector<std::vector<std::complex<double>>> { {1, 0}, { 0, 1 } };
@@ -18,10 +23,14 @@ std::vector<std::vector<std::complex<double>>> getGateMatrixGPU(GateRequestType 
 	case cx:
 		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 0, 0, 1, 0 } };
 		break;
+	case U:
+		return buildU3GateGPU(gate);
+		break;
+	case CX:
+		return std::vector<std::vector<std::complex<double>>> { {1, 0, 0, 0}, { 0, 1, 0, 0 }, { 0, 0, 0, 1 }, { 0, 0, 1, 0 } };
+		break;
 	}
 }
-
-
 
 
 Qubit* GPUQubitFactory::generateQubit()
@@ -50,7 +59,7 @@ GPUQubitFactory::~GPUQubitFactory()
 
 Gate* GPUGateFactory::generateGate(GateRequest request)
 {
-	std::vector<std::vector<std::complex<double>>> gateMatrix = getGateMatrixGPU(request.getGateType());
+	std::vector<std::vector<std::complex<double>>> gateMatrix = getGateMatrixGPU(request);
 	int gateM = gateMatrix.size();
 	int gateN = gateMatrix[0].size();
 

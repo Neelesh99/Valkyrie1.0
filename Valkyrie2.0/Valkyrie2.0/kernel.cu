@@ -13,10 +13,17 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <chrono>
 
 #include <stdio.h>
 
 using namespace antlr4;
+
+std::string getexepath()
+{
+    char result[MAX_PATH];
+    return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
+}
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
 void DisplayHeader();
@@ -27,35 +34,9 @@ __global__ void addKernel(int *c, const int *a, const int *b)
     c[i] = a[i] + b[i];
 }
 
-
-
-int main()
-{
-    const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
-
-    // Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
-        return 1;
-    }
-
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
-
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
-
-    std::ifstream stream;
-    // h q[0];
+void timeCPUExecution() {
+    auto begin = std::chrono::high_resolution_clock::now();
+    std::ifstream stream;    
     stream.open("output.qasm");
     ANTLRInputStream input(stream);
 
@@ -73,11 +54,90 @@ int main()
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     CPUDevice device = CPUDevice();
     device.run(stage.getRegisters(), blocks);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
     device.prettyPrintQubitStates(device.revealQuantumState());
+}
+
+void timeGPUExecution() {
+    auto begin = std::chrono::high_resolution_clock::now();
+    std::ifstream stream;
+    stream.open("output.qasm");
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    Stager stage = Stager();
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     GPUDevice deviceG = GPUDevice();
     deviceG.run(stage.getRegisters(), blocks);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
     deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
-    DisplayHeader();
+}
+
+
+
+int main()
+{
+    const int arraySize = 5;
+    const int a[arraySize] = { 1, 2, 3, 4, 5 };
+    const int b[arraySize] = { 10, 20, 30, 40, 50 };
+    int c[arraySize] = { 0 };
+
+    //// Add vectors in parallel.
+    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "addWithCuda failed!");
+        return 1;
+    }
+
+    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
+        c[0], c[1], c[2], c[3], c[4]);
+
+    // cudaDeviceReset must be called before exiting in order for profiling and
+    // tracing tools such as Nsight and Visual Profiler to show complete traces.
+    cudaStatus = cudaDeviceReset();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaDeviceReset failed!");
+        return 1;
+    }
+    /*std::cout << getexepath() << std::endl;
+    std::ifstream stream;
+     h q[0];
+    stream.open("output.qasm");
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);    
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    Stager stage = Stager();    
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);    
+    CPUDevice device = CPUDevice();
+    device.run(stage.getRegisters(), blocks);
+    device.prettyPrintQubitStates(device.revealQuantumState());    
+    GPUDevice deviceG = GPUDevice();
+    deviceG.run(stage.getRegisters(), blocks);    
+    deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
+    DisplayHeader();*/
+    for (int i = 0; i < 1; i++) {
+        timeGPUExecution();
+    }
     return 0;
 }
 

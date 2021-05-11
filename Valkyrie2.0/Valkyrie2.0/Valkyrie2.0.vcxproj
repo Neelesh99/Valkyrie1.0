@@ -23,7 +23,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <PlatformToolset>v142</PlatformToolset>
@@ -43,6 +43,11 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>N:\ValkyrieRec\Valkyrie1.0\Valkyrie2.0\x64\Debug\antlrLib\runtime\src;$(IncludePath)</IncludePath>
     <LibraryPath>N:\ValkyrieRec\Valkyrie1.0\Valkyrie2.0\x64\Debug\antlrLib\runtime\bin\vs-2019\x64\Debug DLL;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LibraryPath>N:\ValkyrieRec\Valkyrie1.0\Valkyrie2.0\x64\Release\antlrLib\runtime\bin\vs-2019\x64\Debug DLL;$(LibraryPath)</LibraryPath>
+    <IncludePath>N:\ValkyrieRec\Valkyrie1.0\Valkyrie2.0\x64\Release\antlrLib\runtime\src;$(IncludePath)</IncludePath>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -66,13 +71,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;antlr4-runtime.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -88,8 +95,11 @@
     <ClInclude Include="libs\BaseTypes.h" />
     <ClInclude Include="libs\CPUDevice.h" />
     <ClInclude Include="libs\Exceptions.h" />
+    <ClInclude Include="libs\GateUtilitiesCPU.h" />
+    <ClInclude Include="libs\GateUtilitiesGPU.cuh" />
     <ClInclude Include="libs\GPUCompute.cuh" />
     <ClInclude Include="libs\GPUDevice.cuh" />
+    <ClInclude Include="libs\ParsingGateUtilities.h" />
     <ClInclude Include="libs\qasm2BaseVisitor.h" />
     <ClInclude Include="libs\qasm2Lexer.h" />
     <ClInclude Include="libs\qasm2Parser.h" />
@@ -104,6 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="libs\CPUDevice.cpp" />
+    <ClCompile Include="libs\ParsingGateUtilities.cpp" />
     <ClCompile Include="libs\qasm2BaseVisitor.cpp" />
     <ClCompile Include="libs\qasm2Lexer.cpp" />
     <ClCompile Include="libs\qasm2Parser.cpp" />
