@@ -170,8 +170,8 @@ public:
               if (ctx->anylist()) {
                   if (ctx->anylist()->mixedlist()) {
                       idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                      GateRequest gate = compileGateRequest(uopGate, gateArguments, idLoc);
-                      gates_.push_back(gate);
+                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, idLoc);
+                      attachGates(gates);
                   }
               }
           }
