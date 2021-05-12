@@ -209,6 +209,19 @@ public:
                       std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, idLoc);
                       attachGates(gates);
                   }
+                  else {
+                      std::vector<std::string> identifiers = visitIdlist(ctx->anylist()->idlist()).as<std::vector<std::string>>();
+                      for (auto identifier : identifiers) {
+                          int width = findRegWidth(identifier);
+                          idLocationPairs pairs;
+                          for (int i = 0; i < width; i++) {
+                              pairs.identifiers.push_back(identifier);
+                              pairs.locations.push_back(i);
+                          }
+                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, pairs);
+                          attachGates(gates);
+                      }
+                  }
               }
           }
           else {
@@ -216,6 +229,19 @@ public:
                   if (ctx->anylist()->mixedlist()) {
                       idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
                       std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, idLoc);
+                      attachGates(gates);
+                  }
+              }
+              else {
+                  std::vector<std::string> identifiers = visitIdlist(ctx->anylist()->idlist()).as<std::vector<std::string>>();
+                  for (auto identifier : identifiers) {
+                      int width = findRegWidth(identifier);
+                      idLocationPairs pairs;
+                      for (int i = 0; i < width; i++) {
+                          pairs.identifiers.push_back(identifier);
+                          pairs.locations.push_back(i);
+                      }
+                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, pairs);
                       attachGates(gates);
                   }
               }
