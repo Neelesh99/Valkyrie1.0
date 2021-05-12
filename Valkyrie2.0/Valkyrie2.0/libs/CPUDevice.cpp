@@ -166,7 +166,7 @@ void CPUQuantumProcessor::calculate()
 				*qubit1->fetch(0) = qubitValsAfter_[0] + qubitValsAfter_[1];
 				*qubit1->fetch(1) = qubitValsAfter_[2] + qubitValsAfter_[3];
 				*qubit2->fetch(0) = qubitValsAfter_[0] + qubitValsAfter_[2];
-				*qubit2->fetch(1) = qubitValsAfter_[1] + qubitValsAfter_[3];
+				*qubit2->fetch(1) = qubitValsAfter_[1] + qubitValsAfter_[3];				
 			}
 		}
 	}

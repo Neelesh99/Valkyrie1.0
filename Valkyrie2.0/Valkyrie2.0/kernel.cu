@@ -9,6 +9,7 @@
 #include "libs/staging.h"
 #include "libs/CPUDevice.h"
 #include "libs/GPUDevice.cuh"
+#include "libs/Measurement.h"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -82,6 +83,16 @@ void timeGPUExecution() {
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
     deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
+    MeasurementCalculator measure = MeasurementCalculator(registers);
+    measure.registerHandover(deviceG.revealQuantumState());
+    measure.measureAll();
+    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
+    std::cout << "Measurement complete" << std::endl;
+    std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
+    measure.loadMeasureCommands(commands);
+    measure.passMeasurementsIntoClassicalRegisters();
+    Register cReg = measure.fetchRegister("c");
+    std::cout << "Commands processed" << std::endl;
 }
 
 

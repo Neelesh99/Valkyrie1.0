@@ -60,16 +60,26 @@ class ClassicalRegister {
 private:
 	std::string identifier_;
 	int width_;
+	std::vector<int> values_;
 public:
 	ClassicalRegister(std::string identifier, int width) {
 		identifier_ = identifier;
 		width_ = width;
+		for (int i = 0; i < width; i++) {
+			values_.push_back(0);
+		}
 	}
 	std::string getIdentifier() {
 		return identifier_;
 	}
 	int getWidth() {
 		return width_;
+	}
+	void setValue(int i, int val) {
+		values_[i] = val;
+	}
+	int getValue(int i) {
+		return values_[i];
 	}
 	ClassicalRegister() = default;
 };
@@ -95,6 +105,10 @@ public:
 
 	ClassicalRegister getClassicalRegister() {
 		return cReg_;
+	}
+
+	void setClassicalRegister(ClassicalRegister cReg) {
+		cReg_ = cReg;
 	}
 
 	std::string getName() {
@@ -296,4 +310,21 @@ public:
 	}
 };
 
+class MeasureCommand {
+private:
+	idLocationPairs from_;
+	idLocationPairs to_;
+public:
+	MeasureCommand(idLocationPairs from, idLocationPairs to) {
+		from_ = from;
+		to_ = to;
+	}
 
+	idLocationPairs getFrom() {
+		return from_;
+	}
+
+	idLocationPairs getTo() {
+		return to_;
+	}
+};
