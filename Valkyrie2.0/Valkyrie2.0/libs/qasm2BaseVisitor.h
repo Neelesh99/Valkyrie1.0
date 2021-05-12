@@ -98,7 +98,7 @@ public:
       return 1;
   }
 
-  virtual antlrcpp::Any visitStatement(qasm2Parser::StatementContext *ctx) override {               //Incomplete -gatedecl -if 
+  virtual antlrcpp::Any visitStatement(qasm2Parser::StatementContext *ctx) override {               //Incomplete -gatedecl 
       if (ctx->decl()) {
           /*Register newRegister = visitDecl(ctx->decl()).as<Register>();
           registers_.push_back(newRegister);*/
@@ -238,7 +238,7 @@ public:
       return idStrings;
   }
 
-  virtual antlrcpp::Any visitMixedlist(qasm2Parser::MixedlistContext *ctx) override {           // Incomplete -reg.size != location.size
+  virtual antlrcpp::Any visitMixedlist(qasm2Parser::MixedlistContext *ctx) override {           // Complete
       int countID = ctx->ID().size();
       int countINT = ctx->INT().size();
       if (countID == countINT) {
@@ -255,7 +255,46 @@ public:
           idLoc.locations = locations;
           return idLoc;
       }
-      // if countID != countINT Low priority
+      else {
+          std::string decider = ctx->getToken(sizeof(antlr4::Token), 1)->getText();
+          if (decider == "[") {
+              std::vector<std::string> identifiers;
+              for (int i = 0; i < countINT; i++) {
+                  identifiers.push_back(ctx->ID()[i]->getText());
+              }
+              std::string finalID = ctx->ID()[countINT]->getText();
+              std::vector<int> locations;
+              for (auto val : ctx->INT()) {
+                  locations.push_back(std::stoi(val->getText()));
+              }
+              int width = findRegWidth(finalID);
+              identifiers.push_back(finalID);
+              for (int i = 0; i < width; i++) {
+                  locations.push_back(i);
+              }
+              idLocationPairs idLoc;
+              idLoc.identifiers = identifiers;
+              idLoc.locations = locations;
+              return idLoc;
+          }
+          if (decider == ",") {
+              std::vector<std::string> identifiers;
+              std::vector<int> locations;
+              for (int i = 0; i < countID - 1; i++) {
+                  for (int j = 0; j < findRegWidth(ctx->ID()[j]->getText()); j++) {
+                      identifiers.push_back(ctx->ID()[i]->getText());
+                      locations.push_back(j);
+                  }                  
+              }
+              std::string finalID = ctx->ID()[countID - 1]->getText();
+              identifiers.push_back(finalID);
+              locations.push_back(std::stoi(ctx->INT()[0]->getText()));
+              idLocationPairs idLoc;
+              idLoc.identifiers = identifiers;
+              idLoc.locations = locations;
+              return idLoc;
+          }
+      }
     return visitChildren(ctx);
   }
 
@@ -276,7 +315,7 @@ public:
       return pairs;
   }
 
-  virtual antlrcpp::Any visitExplist(qasm2Parser::ExplistContext *ctx) override {           // Incomplete -classical register value (ID)
+  virtual antlrcpp::Any visitExplist(qasm2Parser::ExplistContext *ctx) override {           // Complete
       std::vector<double> values;
       for (auto exp : ctx->exp()) {
           double value = visitExp(exp);
@@ -329,7 +368,7 @@ public:
               }
           }
       }
-      if (ctx->ID()) {      // Need to evaluate
+      if (ctx->ID()) { 
           double k = 0;
           return k;
       }
@@ -382,7 +421,5 @@ public:
       }
       return SIN_;
   }
-
-
 };
 
