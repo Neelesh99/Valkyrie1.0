@@ -13,7 +13,8 @@ struct idLocationPairs {
 
 enum DeviceType {
 	CPU_,
-	GPU_
+	GPU_,
+	INVALID
 };
 
 class HeaderData {

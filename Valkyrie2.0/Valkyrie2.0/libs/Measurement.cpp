@@ -72,3 +72,16 @@ Register MeasurementCalculator::fetchRegister(std::string name)
 	}
 	return allRegisters_[loc];
 }
+
+void MeasurementCalculator::printClassicalRegisters()
+{
+	for (auto reg : allRegisters_) {
+		if (!reg.isQuantum()) {
+			ClassicalRegister cReg = reg.getClassicalRegister();
+			std::cout << "Classical Register Identifier: " << cReg.getIdentifier() << std::endl;
+			for (int i = 0; i < cReg.getWidth(); i++) {
+				std::cout << "Location [" << i << "]: " << cReg.getValue(i) << std::endl;
+			}
+		}
+	}
+}

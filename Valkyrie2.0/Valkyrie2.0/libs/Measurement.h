@@ -2,6 +2,7 @@
 
 #include <map>
 #include "BaseTypes.h"
+#include <iostream>
 
 class MeasurementCalculator {
 private:
@@ -27,4 +28,8 @@ public:
 	void loadMeasureCommands(std::vector<MeasureCommand> commands);
 	void passMeasurementsIntoClassicalRegisters();
 	Register fetchRegister(std::string name);
+	std::vector<Register> getAllRegisters() {
+		return allRegisters_;
+	}
+	void printClassicalRegisters();
 };
