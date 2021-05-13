@@ -18,6 +18,8 @@
 
 #include <stdio.h>
 
+#include "test/ValkyrieTests.h"
+
 using namespace antlr4;
 
 std::string getexepath()
@@ -154,6 +156,8 @@ int main(int argc, char *argv[])
     else {
         GPURun(fileName);
     }
+
+    
     
     /*for (int i = 0; i < 1; i++) {
         timeGPUExecution();
@@ -382,6 +386,17 @@ void handleInfoRequest(std::vector<std::string> arguments)
     for (auto argument : arguments) {
         if (argument == "-gpuInfo") {
             DisplayHeader();
+        }
+        if (argument == "-test") {
+            ValkyrieTests tester = ValkyrieTests();
+            tester.runTests();
+            std::cout << "Number of Tests passed: " << tester.noPassed() << std::endl;
+            std::cout << "Test pass percentage: " << tester.getPercentagePassed() << std::endl;
+            if (tester.getPercentagePassed() != 100.0) {
+                for (auto fail : tester.testsFailed()) {
+                    std::cout << "Test Failed: " << fail << std::endl;
+                }
+            }
         }
     }
 }
