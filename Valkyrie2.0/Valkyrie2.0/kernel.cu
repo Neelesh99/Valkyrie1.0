@@ -9,6 +9,7 @@
 #include "libs/staging.h"
 #include "libs/CPUDevice.h"
 #include "libs/GPUDevice.cuh"
+#include "libs/Measurement.h"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -27,6 +28,13 @@ std::string getexepath()
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
 void DisplayHeader();
+void printHelp();
+DeviceType resolveDeviceType(std::vector<std::string> arguments);
+std::string fetchFileName(std::vector<std::string> arguments);
+void CPURun(std::string filename);
+void GPURun(std::string filename);
+void handleInfoRequest(std::vector<std::string> arguments);
+
 
 __global__ void addKernel(int *c, const int *a, const int *b)
 {
@@ -82,62 +90,74 @@ void timeGPUExecution() {
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
     deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
+    MeasurementCalculator measure = MeasurementCalculator(registers);
+    measure.registerHandover(deviceG.revealQuantumState());
+    measure.measureAll();
+    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
+    std::cout << "Measurement complete" << std::endl;
+    std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
+    measure.loadMeasureCommands(commands);
+    measure.passMeasurementsIntoClassicalRegisters();
+    Register cReg = measure.fetchRegister("c");
+    std::cout << "Commands processed" << std::endl;
 }
 
 
 
-int main()
+int main(int argc, char *argv[])
 {
-    const int arraySize = 5;
+    //std::cout << "There are: " << argc << " arguments" << std::endl;
+    /*const int arraySize = 5;
     const int a[arraySize] = { 1, 2, 3, 4, 5 };
     const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
+    int c[arraySize] = { 0 };*/
 
-    //// Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
+    ////// Add vectors in parallel.
+    //cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
+    //if (cudaStatus != cudaSuccess) {
+    //    fprintf(stderr, "addWithCuda failed!");
+    //    return 1;
+    //}
+
+    //printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
+    //    c[0], c[1], c[2], c[3], c[4]);
+
+    //// cudaDeviceReset must be called before exiting in order for profiling and
+    //// tracing tools such as Nsight and Visual Profiler to show complete traces.
+    //cudaStatus = cudaDeviceReset();
+    //if (cudaStatus != cudaSuccess) {
+    //    fprintf(stderr, "cudaDeviceReset failed!");
+    //    return 1;
+    //}
+    std::vector<std::string> arguments;
+    for (int i = 1; i < argc; i++) {
+        arguments.push_back(argv[i]);
+    }
+    handleInfoRequest(arguments);
+
+    DeviceType type = resolveDeviceType(arguments);
+    if (type == INVALID) {
+        std::cout << "Invalid or No execution mode provided, specify -c or -g" << std::endl;
+        printHelp();
         return 1;
     }
 
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
-
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
+    std::string fileName = fetchFileName(arguments);
+    if (fileName == "INVALID") {
+        std::cout << "File not specified, please use -o <filename> to indicate which file Valkyrie should process" << std::endl;
+        printHelp();
         return 1;
     }
-    /*std::cout << getexepath() << std::endl;
-    std::ifstream stream;
-     h q[0];
-    stream.open("output.qasm");
-    ANTLRInputStream input(stream);
-
-    qasm2Lexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    qasm2Parser parser(&tokens);
-
-    qasm2Parser::MainprogContext* tree = parser.mainprog();
-
-    qasm2BaseVisitor visitor;
-    visitor.visitMainprog(tree);    
-    std::vector<Register> registers = visitor.getRegisters();
-    std::vector<GateRequest> gateRequests = visitor.getGates();
-    Stager stage = Stager();    
-    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);    
-    CPUDevice device = CPUDevice();
-    device.run(stage.getRegisters(), blocks);
-    device.prettyPrintQubitStates(device.revealQuantumState());    
-    GPUDevice deviceG = GPUDevice();
-    deviceG.run(stage.getRegisters(), blocks);    
-    deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
-    DisplayHeader();*/
-    for (int i = 0; i < 1; i++) {
+    if (type == CPU_) {
+        CPURun(fileName);
+    }
+    else {
+        GPURun(fileName);
+    }
+    
+    /*for (int i = 0; i < 1; i++) {
         timeGPUExecution();
-    }
+    }*/
     return 0;
 }
 
@@ -248,5 +268,120 @@ void DisplayHeader()
         std::cout << "  Max block dimensions: [ " << props.maxThreadsDim[0] << ", " << props.maxThreadsDim[1] << ", " << props.maxThreadsDim[2] << " ]" << std::endl;
         std::cout << "  Max grid dimensions:  [ " << props.maxGridSize[0] << ", " << props.maxGridSize[1] << ", " << props.maxGridSize[2] << " ]" << std::endl;
         std::cout << std::endl;
+    }
+}
+
+void printHelp() {
+    std::cout << "Welcome to Valkyrie Help" << std::endl;
+    std::cout << "Command line options" << std::endl;
+    std::cout << "CPU execution mode: \t \t \t -c" << std::endl;
+    std::cout << "GPU execution mode: \t \t \t -g" << std::endl;
+    std::cout << "Path to file: \t \t \t \t -o <filepath>" << std::endl;
+}
+
+DeviceType resolveDeviceType(std::vector<std::string> arguments) {
+    DeviceType val = INVALID;
+    for (std::string argument : arguments) {
+        if (argument == "-g") {
+            val = GPU_;
+            break;
+        }
+        if (argument == "-c") {
+            val = CPU_;
+            break;
+        }
+    }
+    return val;
+}
+
+std::string fetchFileName(std::vector<std::string> arguments) {
+    std::string returnVal = "INVALID";
+    if (arguments.size() == 0) {
+        return returnVal;
+    }
+    for (int i = 0; i < arguments.size()-1; i++) {
+        if (arguments[i] == "-o") {
+            return arguments[i + 1];
+        }
+    }
+    return returnVal;
+}
+
+void CPURun(std::string filename) {
+    std::ifstream stream;
+    stream.open(filename);
+    if (!stream.is_open()) {
+        std::cout << "Couldn't find file specified" << std::endl;
+        printHelp();
+        return;
+    }
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    Stager stage = Stager();
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    CPUDevice device = CPUDevice();
+    device.run(stage.getRegisters(), blocks);
+    MeasurementCalculator measure = MeasurementCalculator(registers);
+    measure.registerHandover(device.revealQuantumState());
+    measure.measureAll();
+    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
+    std::cout << "Measurement complete" << std::endl;
+    std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
+    measure.loadMeasureCommands(commands);
+    measure.passMeasurementsIntoClassicalRegisters();
+    measure.printClassicalRegisters();
+}
+
+void GPURun(std::string filename) {
+    std::ifstream stream;
+    stream.open(filename);
+    if (!stream.is_open()) {
+        std::cout << "Couldn't find file specified" << std::endl;
+        printHelp();
+        return;
+    }
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    Stager stage = Stager();
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    GPUDevice device = GPUDevice();
+    device.run(stage.getRegisters(), blocks);
+    MeasurementCalculator measure = MeasurementCalculator(registers);
+    measure.registerHandover(device.revealQuantumState());
+    measure.measureAll();
+    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
+    std::cout << "Measurement complete" << std::endl;
+    std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
+    measure.loadMeasureCommands(commands);
+    measure.passMeasurementsIntoClassicalRegisters();
+    measure.printClassicalRegisters();
+}
+
+void handleInfoRequest(std::vector<std::string> arguments)
+{
+    for (auto argument : arguments) {
+        if (argument == "-gpuInfo") {
+            DisplayHeader();
+        }
     }
 }
