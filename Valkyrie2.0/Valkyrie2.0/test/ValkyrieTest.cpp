@@ -10,6 +10,7 @@
 #include "../libs/CPUDevice.h"
 #include "../libs/GPUDevice.cuh"
 #include "../libs/Measurement.h"
+#include "../libs/ParsingGateUtilities.h"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -206,6 +207,214 @@ bool parserTest4() {
     return true;
 }
 
+bool parserTest5() {
+    std::ifstream stream;
+    stream.open("test/parserTest5.qasm");
+    if (!stream.is_open()) {
+        std::cout << "Couldn't find file specified" << std::endl;
+        return false;
+    }
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
+
+    // Testing gate registrations
+    if (!(gateRequests.size() == 3)) {
+        return false;
+    }
+
+    for (auto gate : gateRequests) {
+        if (!(gate.getGateType() == U)) {
+            return false;
+        }
+    }
+
+    GateRequest sdg1 = gateRequests[0];
+    GateRequest h1 = gateRequests[1];
+    GateRequest sdg2 = gateRequests[2];
+    const double PIc = 3.1415926535;
+    if (!(sdg1.getParameters()[2] == -PIc / 2) || !(sdg2.getParameters()[2] == -PIc / 2)) {
+        return false;
+    }
+    return true;
+}
+
+// Staging Tests
+bool stagingTest1(std::vector<Register> mockReg1, std::vector<GateRequest> mockGateRequest1) {
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+    if (blocks.size() != 2) {
+        return false;
+    }
+    std::vector<GateRequest> req1 = blocks[0].getGates();
+    std::vector<GateRequest> req2 = blocks[1].getGates();
+    if (!(req1.size() == 1) || !(req2.size() == 1)) {
+        return false;
+    }
+    if (!(req1[0].getGateType() == CX) || !(req2[0].getGateType() == U)) {
+        return false;
+    }
+    return true;
+}
+
+bool stagingTest2(std::vector<Register> mockReg1, std::vector<GateRequest> mockGateRequest1) {
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+    if (blocks.size() != 2) {
+        return false;
+    }
+    std::vector<GateRequest> req1 = blocks[0].getGates();
+    std::vector<GateRequest> req2 = blocks[1].getGates();
+    if (!(req1.size() == 1) || !(req2.size() == 2)) {
+        return false;
+    }
+    if (!(req1[0].getGateType() == CX) || !(req2[0].getGateType() == U) || !(req2[1].getGateType() == U)) {
+        return false;
+    }
+    return true;
+}
+
+bool stagingTest3(std::vector<Register> mockReg1, std::vector<GateRequest> mockGateRequest1) {
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+    if (blocks.size() != 3) {
+        return false;
+    }
+    std::vector<GateRequest> req1 = blocks[0].getGates();
+    std::vector<GateRequest> req2 = blocks[1].getGates();
+    std::vector<GateRequest> req3 = blocks[2].getGates();
+    if (!(req1.size() == 1) || !(req2.size() == 2) || !(req3.size() == 1)) {
+        return false;
+    }
+    if (!(req1[0].getGateType() == CX) || !(req2[0].getGateType() == U) || !(req2[1].getGateType() == U)) {
+        return false;
+    }
+    if (!(req3[0].getGateType() == CX)) {
+        return false;
+    }
+    return true;
+}
+
+// CPU Device Tests
+bool cpuQubitFactoryTest() {
+    CPUQubitFactory cpuQubitFactory = CPUQubitFactory();
+    Qubit* newQubit = cpuQubitFactory.generateQubit();
+    if (!newQubit) {
+        return false;
+    }
+    return true;
+}
+
+bool cpuGateFactoryTest() {
+    CPUGateFactory gateFactory = CPUGateFactory();
+    idLocationPairs pair;
+    pair.identifiers.push_back("q");
+    pair.locations.push_back(0);
+    GateRequest hadamardGate = compileCompoundGateRequest("h", pair)[0];
+    Gate* gate = gateFactory.generateGate(hadamardGate);
+    if (!gate) {
+        return false;
+    }
+    double oneOverSQRT2 = (1 / std::pow(2, 0.5));
+    double diff1 = gate->fetchValue(0, 0).real() - oneOverSQRT2;
+    double diff2 = gate->fetchValue(0, 1).real() - oneOverSQRT2;
+    double diff3 = gate->fetchValue(1, 0).real() - oneOverSQRT2;
+    double diff4 = gate->fetchValue(1, 1).real() + oneOverSQRT2;
+    if (!(diff1 + diff2 + diff3 + diff4 < std::pow(10, -9))) {          // Some numerical differences expexcted since we have fixed precisiona nd PI to 10 dp
+        return false;
+    }
+    return true;
+}
+
+bool cpuQuantumCircuitTest() {
+
+    CPUQubitFactory cpuQubitFactory = CPUQubitFactory();
+    Qubit* newQubit = cpuQubitFactory.generateQubit();
+    Qubit* newQubit2 = cpuQubitFactory.generateQubit();
+
+    // Set up required gate factory
+    CPUGateFactory* gateFactory = &CPUGateFactory();
+    CPUQuantumCircuit circuit = CPUQuantumCircuit(gateFactory);
+    
+    // Set up required qubit map
+    std::map<std::string, std::vector<Qubit*>> qubitMap{
+        {"q", {newQubit, newQubit2}}
+    };
+
+    // Set up required concurrency blocks
+    std::vector<Register> mockReg1;
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("cx", mockPair);
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+    
+    // Load qubitMap
+    circuit.loadQubitMap(qubitMap);
+    // Load first concurrency block
+    circuit.loadBlock(blocks[0]);
+    std::vector<Calculation> calculations = circuit.getNextCalculation();
+    if (!(calculations.size() == 1)) {
+        return false;
+    }
+    Calculation firstCalc = calculations[0];
+    if (!(firstCalc.getQubit(0) == newQubit) || !(firstCalc.getQubit(1) == newQubit2)) {
+        return false;
+    }
+    return true;
+}
+
+bool cpuDeviceAllUpTest() {
+    // Setting up all required info
+    std::vector<Register> mockReg1;
+    QuantumRegister qReg = QuantumRegister("q", 3);
+    ClassicalRegister cReg = ClassicalRegister("c", 3);
+    Register qRegWrapped = Register(quantum_, qReg);
+    Register cRegWrapped = Register(classical_, cReg);
+    mockReg1.push_back(qRegWrapped);
+    mockReg1.push_back(cRegWrapped);
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("cx", mockPair);
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    mockGateRequest1.push_back(compileCompoundGateRequest("cx", mockPair)[0]);
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+
+    CPUDevice device = CPUDevice();
+    device.run(mockReg1, blocks);
+    std::map<std::string, std::vector<Qubit*>> results = device.revealQuantumState();
+    if (!(results["q"][0]->fetch(0)->real() == 1) || !(results["q"][1]->fetch(0)->real() == 1)) {
+        return false;
+    }
+    return true;
+}
+
 
 void ValkyrieTests::runParserTests() {
 
@@ -217,11 +426,47 @@ void ValkyrieTests::runParserTests() {
     handleTestResult(parserTest3(), "Parser Test: CX multi-qubit gate application");
     // Measure command setup check
     handleTestResult(parserTest4(), "Parser Test: Checking Measure command operation");
+    // Compound gate setup check
+    handleTestResult(parserTest5(), "Parser Test: Checking compound gate setup is working");
 }
 
+void ValkyrieTests::runStagingTests()
+{
+    std::vector<Register> mockReg1;
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("c");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("cx", mockPair);
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    
+    handleTestResult(stagingTest1(mockReg1, mockGateRequest1), "Staging test: Checking for correct concurrency resolution simple case");
+
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    handleTestResult(stagingTest2(mockReg1, mockGateRequest1), "Staging test: Checking for correct concurrency resolution in intermediate case");
+    mockGateRequest1.push_back(compileCompoundGateRequest("cx", mockPair)[0]);
+    handleTestResult(stagingTest3(mockReg1, mockGateRequest1), "Staging test: Checking for correct concurrency resolution in complex case");
+}
+
+void ValkyrieTests::runCPUDeviceTests()
+{
+    // Test CPU Qubit Factory
+    handleTestResult(cpuQubitFactoryTest(), "CPU Device Test: Checking whether CPU Qubit factory is able to emit Qubits");
+    // Test CPU Gate Factory
+    handleTestResult(cpuGateFactoryTest(), "CPU Device Test: Checking whether CPU Gate factory is able to resolve correct gates");
+    // Test CPU Quantum Circuit
+    handleTestResult(cpuQuantumCircuitTest(), "CPU Device Test: Checking whether CPU Quantum Circuit is able to compile calculations");
+    // Test CPU device all up
+    handleTestResult(cpuDeviceAllUpTest(), "CPU Device Test: Full run all up test");
+}
 
 ValkyrieTests::ValkyrieTests()
 {
+    // Module initialisation passed ;)
 	total_ = 1;
 	passed_ = 1;
 }
@@ -231,6 +476,10 @@ void ValkyrieTests::runTests()
 	// Valkyrie Test Suite
     // Parser Tests
     runParserTests();
+    // Staging Tests
+    runStagingTests();
+    // CPU Device Tests
+    runCPUDeviceTests();
 }
 
 void ValkyrieTests::handleTestResult(bool res, std::string testDescription)

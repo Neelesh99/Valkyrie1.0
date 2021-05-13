@@ -8,6 +8,8 @@ private:
 	std::vector<std::string> failedTests;
 	std::vector<std::string> passedTests;
 	void runParserTests();
+	void runStagingTests();
+	void runCPUDeviceTests();
 public:	
 	ValkyrieTests();
 	void runTests();
