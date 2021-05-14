@@ -10,6 +10,8 @@ private:
 	void runParserTests();
 	void runStagingTests();
 	void runCPUDeviceTests();
+	void runGPUDeviceTests();
+	void runMeasurementTests();
 public:	
 	ValkyrieTests();
 	void runTests();

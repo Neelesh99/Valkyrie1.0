@@ -415,6 +415,157 @@ bool cpuDeviceAllUpTest() {
     return true;
 }
 
+// GPU Device Tests
+bool gpuQubitFactoryTest() {
+    GPUQubitFactory cpuQubitFactory = GPUQubitFactory();
+    Qubit* newQubit = cpuQubitFactory.generateQubit();
+    if (!newQubit) {
+        return false;
+    }
+    return true;
+}
+
+bool gpuGateFactoryTest() {
+    GPUGateFactory gateFactory = GPUGateFactory();
+    idLocationPairs pair;
+    pair.identifiers.push_back("q");
+    pair.locations.push_back(0);
+    GateRequest hadamardGate = compileCompoundGateRequest("h", pair)[0];
+    Gate* gate = gateFactory.generateGate(hadamardGate);
+    if (!gate) {
+        return false;
+    }
+    double oneOverSQRT2 = (1 / std::pow(2, 0.5));
+    double diff1 = gate->fetchValue(0, 0).real() - oneOverSQRT2;
+    double diff2 = gate->fetchValue(0, 1).real() - oneOverSQRT2;
+    double diff3 = gate->fetchValue(1, 0).real() - oneOverSQRT2;
+    double diff4 = gate->fetchValue(1, 1).real() + oneOverSQRT2;
+    if (!(diff1 + diff2 + diff3 + diff4 < std::pow(10, -9))) {          // Some numerical differences expexcted since we have fixed precisiona nd PI to 10 dp
+        return false;
+    }
+    return true;
+}
+
+bool gpuQuantumCircuitTest() {
+
+    GPUQubitFactory cpuQubitFactory = GPUQubitFactory();
+    Qubit* newQubit = cpuQubitFactory.generateQubit();
+    Qubit* newQubit2 = cpuQubitFactory.generateQubit();
+
+    // Set up required gate factory
+    GPUGateFactory* gateFactory = &GPUGateFactory();
+    GPUQuantumCircuit circuit = GPUQuantumCircuit(gateFactory);
+
+    // Set up required qubit map
+    std::map<std::string, std::vector<Qubit*>> qubitMap{
+        {"q", {newQubit, newQubit2}}
+    };
+
+    // Set up required concurrency blocks
+    std::vector<Register> mockReg1;
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("cx", mockPair);
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+
+    // Load qubitMap
+    circuit.loadQubitMap(qubitMap);
+    // Load first concurrency block
+    circuit.loadBlock(blocks[0]);
+    std::vector<Calculation> calculations = circuit.getNextCalculation();
+    if (!(calculations.size() == 1)) {
+        return false;
+    }
+    Calculation firstCalc = calculations[0];
+    if (!(firstCalc.getQubit(0) == newQubit) || !(firstCalc.getQubit(1) == newQubit2)) {
+        return false;
+    }
+    return true;
+}
+
+bool gpuDeviceAllUpTest() {
+    // Setting up all required info
+    std::vector<Register> mockReg1;
+    QuantumRegister qReg = QuantumRegister("q", 3);
+    ClassicalRegister cReg = ClassicalRegister("c", 3);
+    Register qRegWrapped = Register(quantum_, qReg);
+    Register cRegWrapped = Register(classical_, cReg);
+    mockReg1.push_back(qRegWrapped);
+    mockReg1.push_back(cRegWrapped);
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("cx", mockPair);
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    mockGateRequest1.push_back(compileCompoundGateRequest("h", mockPair2)[0]);
+    mockGateRequest1.push_back(compileCompoundGateRequest("cx", mockPair)[0]);
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+
+    GPUDevice device = GPUDevice();
+    device.run(mockReg1, blocks);
+    std::map<std::string, std::vector<Qubit*>> results = device.revealQuantumState();
+    if (!(results["q"][0]->fetch(0)->real() == 1) || !(results["q"][1]->fetch(0)->real() == 1)) {
+        return false;
+    }
+    return true;
+}
+
+// Measurement Test
+
+bool runSimpleMeasurementTest() {
+    std::ifstream stream;
+    stream.open("test/measureTest1.qasm");
+    if (!stream.is_open()) {
+        std::cout << "Couldn't find file specified" << std::endl;
+        return false;
+    }
+    ANTLRInputStream input(stream);
+
+    qasm2Lexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    qasm2Parser parser(&tokens);
+
+    qasm2Parser::MainprogContext* tree = parser.mainprog();
+
+    qasm2BaseVisitor visitor;
+    visitor.visitMainprog(tree);
+    std::vector<Register> registers = visitor.getRegisters();
+    std::vector<GateRequest> gateRequests = visitor.getGates();
+    std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
+    Stager stager = Stager(registers, gateRequests);
+    CPUDevice device = CPUDevice();
+    device.run(registers, stager.getConcurrencyBlocks());
+    MeasurementCalculator calc = MeasurementCalculator(registers);
+    calc.loadMeasureCommands(commands);
+    calc.registerHandover(device.revealQuantumState());
+    calc.measureAll();
+    calc.passMeasurementsIntoClassicalRegisters();
+    Register cReg = calc.fetchRegister("c");
+    if (cReg.getClassicalRegister().getWidth() != 3) {
+        return false;
+    }
+    if (cReg.getClassicalRegister().getValue(0) != 0) {
+        return false;
+    }
+    return true;
+}
+
+
 
 void ValkyrieTests::runParserTests() {
 
@@ -464,6 +615,25 @@ void ValkyrieTests::runCPUDeviceTests()
     handleTestResult(cpuDeviceAllUpTest(), "CPU Device Test: Full run all up test");
 }
 
+void ValkyrieTests::runGPUDeviceTests()
+{
+    // Test GPU Qubit Factory
+    handleTestResult(gpuQubitFactoryTest(), "GPU Device Test: Checking whether GPU Qubit factory is able to emit Qubits");
+    // Test GPU Gate Factory
+    handleTestResult(gpuGateFactoryTest(), "GPU Device Test: Checking whether GPU Gate factory is able to resolve correct gates");
+    // Test GPU Quantum Circuit
+    handleTestResult(gpuQuantumCircuitTest(), "GPU Device Test: Checking whether GPU Quantum Circuit is able to compile calculations");
+    // Test GPU device all up
+    handleTestResult(gpuDeviceAllUpTest(), "GPU Device Test: Full run all up test");
+}
+
+void ValkyrieTests::runMeasurementTests()
+{
+    handleTestResult(runSimpleMeasurementTest(), "Measurement test: Checking whether simple emasure case is handled");
+}
+
+
+
 ValkyrieTests::ValkyrieTests()
 {
     // Module initialisation passed ;)
@@ -480,6 +650,10 @@ void ValkyrieTests::runTests()
     runStagingTests();
     // CPU Device Tests
     runCPUDeviceTests();
+    // GPU Device Tests
+    runGPUDeviceTests();
+    // Measurement Test
+    runMeasurementTests();
 }
 
 void ValkyrieTests::handleTestResult(bool res, std::string testDescription)
