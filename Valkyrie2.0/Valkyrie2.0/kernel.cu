@@ -335,11 +335,8 @@ void CPURun(std::string filename) {
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     CPUDevice device = CPUDevice();
     device.run(stage.getRegisters(), blocks);
-    MeasurementCalculator measure = MeasurementCalculator(registers);
-    measure.registerHandover(device.revealQuantumState());
-    measure.measureAll();
-    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
-    std::cout << "Measurement complete" << std::endl;
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
+    measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
     measure.passMeasurementsIntoClassicalRegisters();
@@ -370,11 +367,8 @@ void GPURun(std::string filename) {
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     GPUDevice device = GPUDevice();
     device.run(stage.getRegisters(), blocks);
-    MeasurementCalculator measure = MeasurementCalculator(registers);
-    measure.registerHandover(device.revealQuantumState());
-    measure.measureAll();
-    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
-    std::cout << "Measurement complete" << std::endl;
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
+    measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
     measure.passMeasurementsIntoClassicalRegisters();

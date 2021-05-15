@@ -2,12 +2,22 @@
 #include <vector>
 #include <string>
 #include <complex>
+#include <map>
 
 struct idLocationPairs {
 	std::vector<std::string> identifiers;
 	std::vector<int> locations;
 	int getSize() {
 		return identifiers.size();
+	}
+};
+
+struct SVPair {
+	std::string name_;
+	int location_;
+	SVPair(std::string name, int location) {
+		name_ = name;
+		location_ = location;
 	}
 };
 
@@ -294,16 +304,22 @@ private:
 	Gate* gate_;
 	//std::complex<double>* qubitValues_; next iteration
 	std::vector<Qubit*> qubitValues_;
+	std::vector<SVPair> locations_;
 public:
-	Calculation(Gate* gate, std::vector<Qubit*> qubitVals) {
+	Calculation(Gate* gate, std::vector<Qubit*> qubitVals, std::vector<SVPair> locations) {
 		gate_ = gate;
 		qubitValues_ = qubitVals;
+		locations_ = locations;
 	}
 	Gate* getGate() {
 		return gate_;
 	}
 	Qubit* getQubit(int i) {
 		return qubitValues_[i];
+	}
+
+	std::vector<SVPair> getLocations() {
+		return locations_;
 	}
 
 	std::vector<Qubit*> getQubits() {
@@ -327,5 +343,134 @@ public:
 
 	idLocationPairs getTo() {
 		return to_;
+	}
+};
+
+
+
+class StateVector {
+private:
+	std::vector<SVPair> positions_;
+	std::vector<std::complex<double>> state_;
+	std::map<std::string, std::vector<Qubit*>>* qubitMap_;
+
+	int inverseTail(int nTotal, int indexInPositions, int locationInStateVec) {
+		int j = std::pow(2, (nTotal - indexInPositions));
+		if ((locationInStateVec % j) < (j / 2)) {
+			return 0;
+		}
+		else {
+			return 1;
+		}
+	}
+
+	bool tail(int nTotal, int indexInPositions, int locationInStateVec, int index) {
+		return inverseTail(nTotal, indexInPositions, locationInStateVec) == index;
+	}
+
+	std::vector<int> affectedValues(int loc1, int index1, int loc2, int index2) {
+		std::vector<int> affected;
+		int n = positions_.size();
+		for (int i = 0; i < state_.size(); i++) {
+			if (tail(n, loc1, i, index1) && tail(n, loc2, i, index2)) {
+				affected.push_back(i);
+			}
+		}
+		return affected;
+	}
+
+	void calculateNewVals(int pos1, int pos2, std::vector<std::complex<double>> newValues, int loc1Index, int loc2Index) {
+		int pos = pos1 * 2 + pos2;
+		std::complex<double> newVal = newValues[pos];
+		std::vector<int> affected = affectedValues(loc1Index, pos1, loc2Index, pos2);
+		int n = positions_.size();
+		for (int position : affected) {
+			std::complex < double> val = newVal;
+			for (int i = 0; i < positions_.size(); i++) {				
+				if (i != loc1Index && i != loc2Index) {
+					int tailedPos = inverseTail(n, i, position);					
+					std::complex<double> value = *(qubitMap_->find(positions_[i].name_)->second[positions_[i].location_]->fetch(tailedPos));
+					val = val * value;
+				}
+			}
+			state_[position] = val;
+		}
+	}
+
+	int searchIndex(SVPair val) {
+		for (int i = 0; i < positions_.size(); i++) {
+			SVPair res = positions_[i];
+			if (res.name_ == val.name_ && res.location_ == val.location_) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+public:
+	StateVector() {};
+	StateVector(std::map<std::string, std::vector<Qubit*>>* linkToQubits) {
+		qubitMap_ = linkToQubits;
+	}
+
+	std::vector<std::complex<double>> getState() {
+		return state_;
+	}
+
+	void tensorProduct() {
+		for (std::map<std::string, std::vector<Qubit*>>::iterator it = qubitMap_->begin(); it != qubitMap_->end(); ++it) {
+			for (int i = 0; i < it->second.size(); i++) {
+				SVPair pair(it->first, i);
+				positions_.push_back(pair);
+			}
+		}
+		int n = positions_.size();
+		int dimStateVec = std::pow(2, n);
+		state_.resize(dimStateVec);
+		for (int i = 0; i < dimStateVec; i++) {
+			std::complex<double> start = 1;
+			for (int j = 0; j < n; j++) {
+				int element = inverseTail(n, j, i);
+				SVPair resolvedPair = positions_[j];
+				Qubit* qubit = qubitMap_->find(resolvedPair.name_)->second[resolvedPair.location_];
+				start = start * *(qubit->fetch(element));
+			}
+			state_[i] = start;
+		}
+	}
+
+	void modifyState(std::vector<std::complex<double>> newValues, SVPair loc1, SVPair loc2) {
+		int loc1Index = searchIndex(loc1);
+		int loc2Index = searchIndex(loc2);
+		if (loc1Index == -1 || loc2Index == -1) {
+			return;
+		}
+		if (newValues.size() != 4) {
+			return;
+		}
+		calculateNewVals(0, 0, newValues, loc1Index, loc2Index);
+		calculateNewVals(0, 1, newValues, loc1Index, loc2Index);
+		calculateNewVals(1, 0, newValues, loc1Index, loc2Index);
+		calculateNewVals(1, 1, newValues, loc1Index, loc2Index);
+	}
+
+	void quickRefresh() {
+		int n = positions_.size();
+		int dimStateVec = std::pow(2, n);
+		for (int i = 0; i < dimStateVec; i++) {
+			std::complex<double> start = 1;
+			for (int j = 0; j < n; j++) {
+				int element = inverseTail(n, j, i);
+				SVPair resolvedPair = positions_[j];
+				Qubit* qubit = qubitMap_->find(resolvedPair.name_)->second[resolvedPair.location_];
+				start = start * *(qubit->fetch(element));
+			}
+			state_[i] = start;
+		}
+	}
+
+	int getVal(int positionInStateVector, SVPair pair) {
+		int position = searchIndex(pair);
+		return inverseTail(positions_.size(), position, positionInStateVector);
 	}
 };

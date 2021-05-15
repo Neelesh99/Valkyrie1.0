@@ -33,3 +33,27 @@ public:
 	}
 	void printClassicalRegisters();
 };
+
+class StateVectorMeasurement {
+private:
+	StateVector* sv_;
+	double getMagnitude(std::complex<double> value);
+	double getTotalMagnitude();
+	int state_;
+	std::vector<MeasureCommand> commands_;
+	std::vector<Register> allRegisters_;
+	int findReg(std::string identifier) {
+		for (int i = 0; i < allRegisters_.size(); i++) {
+			if (allRegisters_[i].getName() == identifier) {
+				return i;
+			}
+		}
+		return -1;
+	}
+public:
+	StateVectorMeasurement(StateVector* sv, std::vector<Register> allRegister);
+	void measure();
+	void loadMeasureCommands(std::vector<MeasureCommand> commands);
+	void passMeasurementsIntoClassicalRegisters();
+	void printClassicalRegisters();
+};

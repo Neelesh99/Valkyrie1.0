@@ -75,9 +75,20 @@ GPUGateFactory::~GPUGateFactory()
 	}
 }
 
+std::vector<SVPair> GPUQuantumCircuit::zipSVPairs(std::vector<std::string> names, std::vector<int> locs)
+{
+	std::vector<SVPair> values;
+	for (int i = 0; i < names.size(); i++) {
+		values.push_back(SVPair(names[i], locs[i]));
+	}
+	return values;
+}
+
 void GPUQuantumCircuit::loadQubitMap(std::map<std::string, std::vector<Qubit*>> qubitMap)
 {
 	qubitMap_ = qubitMap;
+	sv_ = new StateVector(&qubitMap_);
+	sv_->tensorProduct();
 }
 
 void GPUQuantumCircuit::loadBlock(ConcurrentBlock block)
@@ -92,7 +103,8 @@ void GPUQuantumCircuit::loadBlock(ConcurrentBlock block)
 			qubitValues.push_back(qubitMap_[registers[i]][locations[i]]);
 		}
 		Gate* gateTrue = gateFactory_->generateGate(gate);
-		Calculation calc = Calculation(gateTrue, qubitValues);
+		std::vector<SVPair> svPairs = zipSVPairs(registers, locations);
+		Calculation calc = Calculation(gateTrue, qubitValues, svPairs);
 		calcs.push_back(calc);
 	}
 	calculations_.push_back(calcs);
@@ -114,6 +126,11 @@ std::vector<Calculation> GPUQuantumCircuit::getNextCalculation()
 std::map<std::string, std::vector<Qubit*>> GPUQuantumCircuit::returnResults()
 {
 	return qubitMap_;
+}
+
+StateVector* GPUQuantumCircuit::getStateVector()
+{
+	return sv_;
 }
 
 bool GPUQuantumCircuit::checkComplete()
@@ -160,7 +177,13 @@ void GPUQuantumProcessor::calculate()
 				fprintf(stderr, "cudaMalloc failed!");
 				goto Error;
 			}
-			ValkGPULib::calculateGPU(beforeGate, gateValues, afterGate, calc.getGate(), calc.getQubits());
+			std::vector<std::complex<double>> res = ValkGPULib::calculateGPU(beforeGate, gateValues, afterGate, calc.getGate(), calc.getQubits());
+			if (res.size() == 2) {
+				circuit_->getStateVector()->quickRefresh();
+			}
+			if (res.size() == 4) {
+				circuit_->getStateVector()->modifyState(res, calc.getLocations()[0], calc.getLocations()[1]);
+			}
 			cudaFree(beforeGate);
 			cudaFree(afterGate);
 			cudaFree(gateValues);

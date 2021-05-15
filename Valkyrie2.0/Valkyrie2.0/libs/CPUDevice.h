@@ -34,6 +34,8 @@ private:
 	std::vector<std::vector<Calculation>> calculations_;
 	CPUGateFactory* gateFactory_;
 	int calcCounter = 0;
+	std::vector<SVPair> zipSVPairs(std::vector<std::string> names, std::vector<int> locs);
+	StateVector* sv_;
 public:
 	CPUQuantumCircuit(CPUGateFactory* gateFactory) {
 		gateFactory_ = gateFactory;
@@ -44,7 +46,11 @@ public:
 	void loadBlock(ConcurrentBlock block);
 	std::vector<Calculation> getNextCalculation();
 	std::map<std::string, std::vector<Qubit*>> returnResults();
+	StateVector* getStateVector();
 	bool checkComplete();
+	~CPUQuantumCircuit() {
+		delete sv_;
+	}
 };
 
 class CPUQuantumProcessor : public AbstractQuantumProcessor {
@@ -90,6 +96,9 @@ public:
 				std::cout << "Location [" << i << "]: " << regQubits[i]->fetch(0)->real() << "+" << regQubits[i]->fetch(0)->imag() << "i" << " ||| " << regQubits[i]->fetch(1)->real() << "+" << regQubits[i]->fetch(1)->imag() << "i" << std::endl;
 			}
 		}
+	}
+	StateVector* getStateVector() {
+		return quantumCircuit->getStateVector();
 	}
 	~CPUDevice() {
 		delete qubitFactory;

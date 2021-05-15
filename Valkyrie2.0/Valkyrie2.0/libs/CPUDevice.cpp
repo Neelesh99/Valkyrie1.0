@@ -71,9 +71,20 @@ CPUGateFactory::~CPUGateFactory()
 	}
 }
 
+std::vector<SVPair> CPUQuantumCircuit::zipSVPairs(std::vector<std::string> names, std::vector<int> locs)
+{
+	std::vector<SVPair> values;
+	for (int i = 0; i < names.size(); i++) {
+		values.push_back(SVPair(names[i], locs[i]));
+	}
+	return values;
+}
+
 void CPUQuantumCircuit::loadQubitMap(std::map<std::string, std::vector<Qubit*>> qubitMap)
 {
 	qubitMap_ = qubitMap;
+	sv_ = new StateVector(&qubitMap_);
+	sv_->tensorProduct();
 }
 
 void CPUQuantumCircuit::loadBlock(ConcurrentBlock block)
@@ -88,7 +99,8 @@ void CPUQuantumCircuit::loadBlock(ConcurrentBlock block)
 			qubitValues.push_back(qubitMap_[registers[i]][locations[i]]);
 		}
 		Gate* gateTrue = gateFactory_->generateGate(gate);
-		Calculation calc = Calculation(gateTrue, qubitValues);
+		std::vector<SVPair> svPairs = zipSVPairs(registers, locations);
+		Calculation calc = Calculation(gateTrue, qubitValues, svPairs);
 		calcs.push_back(calc);
 	}
 	calculations_.push_back(calcs);
@@ -110,6 +122,11 @@ std::vector<Calculation> CPUQuantumCircuit::getNextCalculation()
 std::map<std::string, std::vector<Qubit*>> CPUQuantumCircuit::returnResults()
 {
 	return qubitMap_;
+}
+
+StateVector* CPUQuantumCircuit::getStateVector()
+{
+	return sv_;
 }
 
 bool CPUQuantumCircuit::checkComplete()
@@ -159,6 +176,7 @@ void CPUQuantumProcessor::calculate()
 				Qubit* qubit = qubits[0];
 				*qubit->fetch(0) = qubitValsAfter_[0];
 				*qubit->fetch(1) = qubitValsAfter_[1];
+				circuit_->getStateVector()->quickRefresh();
 			}
 			else {
 				Qubit* qubit1 = qubits[0];
@@ -166,7 +184,8 @@ void CPUQuantumProcessor::calculate()
 				*qubit1->fetch(0) = qubitValsAfter_[0] + qubitValsAfter_[1];
 				*qubit1->fetch(1) = qubitValsAfter_[2] + qubitValsAfter_[3];
 				*qubit2->fetch(0) = qubitValsAfter_[0] + qubitValsAfter_[2];
-				*qubit2->fetch(1) = qubitValsAfter_[1] + qubitValsAfter_[3];				
+				*qubit2->fetch(1) = qubitValsAfter_[1] + qubitValsAfter_[3];
+				circuit_->getStateVector()->modifyState(qubitValsAfter_, calc.getLocations()[0], calc.getLocations()[1]);
 			}
 		}
 	}

@@ -27,6 +27,7 @@ public:
 	virtual void loadBlock(ConcurrentBlock block) = 0;
 	virtual std::vector<Calculation> getNextCalculation() = 0;
 	virtual std::map<std::string, std::vector<Qubit*>> returnResults() = 0;
+	virtual StateVector* getStateVector() = 0;
 	virtual bool checkComplete() = 0;
 };
 

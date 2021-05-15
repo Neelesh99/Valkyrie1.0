@@ -85,3 +85,76 @@ void MeasurementCalculator::printClassicalRegisters()
 		}
 	}
 }
+
+double StateVectorMeasurement::getMagnitude(std::complex<double> value)
+{
+	return std::pow(value.real(), 2) + std::pow(value.imag(), 2);
+}
+
+double StateVectorMeasurement::getTotalMagnitude()
+{
+	double total = 0;
+	std::vector<std::complex<double>> state = sv_->getState();
+	for (int i = 0; i < state.size(); i++) {
+		total += getMagnitude(state[i]);
+	}
+	return total;
+}
+
+StateVectorMeasurement::StateVectorMeasurement(StateVector* sv, std::vector<Register> allRegister)
+{
+	sv_ = sv;
+	allRegisters_ = allRegister;
+}
+
+void StateVectorMeasurement::measure()
+{
+	double totalMag =  getTotalMagnitude();
+	double measurement = ((double)std::rand() / (RAND_MAX)) * (totalMag);
+	int state = 0;
+	if (sv_->getState().size() == 0) {
+		return;
+	}
+	std::vector<std::complex<double>> values = sv_->getState();
+	double soFar = getMagnitude(values[state]);
+	while (measurement > soFar) {
+		state++;
+		soFar += getMagnitude(values[state]);
+	}
+	state_ = state;
+}
+
+void StateVectorMeasurement::loadMeasureCommands(std::vector<MeasureCommand> commands)
+{
+	commands_ = commands;
+}
+
+void StateVectorMeasurement::passMeasurementsIntoClassicalRegisters()
+{
+	for (auto command : commands_) {
+		idLocationPairs qReg = command.getFrom();
+		idLocationPairs cReg = command.getTo();
+
+		int cRegLoc = findReg(cReg.identifiers[0]);
+		if (cRegLoc != -1) {
+			ClassicalRegister cRegVal = allRegisters_[cRegLoc].getClassicalRegister();
+			cRegVal.setValue(cReg.locations[0], sv_->getVal(state_, SVPair(qReg.identifiers[0], qReg.locations[0])));
+			Register cRegFin = allRegisters_[cRegLoc];
+			cRegFin.setClassicalRegister(cRegVal);
+			allRegisters_[cRegLoc] = cRegFin;
+		}
+	}
+}
+
+void StateVectorMeasurement::printClassicalRegisters()
+{
+	for (auto reg : allRegisters_) {
+		if (!reg.isQuantum()) {
+			ClassicalRegister cReg = reg.getClassicalRegister();
+			std::cout << "Classical Register Identifier: " << cReg.getIdentifier() << std::endl;
+			for (int i = 0; i < cReg.getWidth(); i++) {
+				std::cout << "Location [" << i << "]: " << cReg.getValue(i) << std::endl;
+			}
+		}
+	}
+}
