@@ -557,6 +557,38 @@ bool gpuDeviceAllUpTest() {
     return true;
 }
 
+bool gpuStateVectorRunTest() {
+    // Setting up all required info
+    std::vector<Register> mockReg1;
+    QuantumRegister qReg = QuantumRegister("q", 3);
+    ClassicalRegister cReg = ClassicalRegister("c", 3);
+    Register qRegWrapped = Register(quantum_, qReg);
+    Register cRegWrapped = Register(classical_, cReg);
+    mockReg1.push_back(qRegWrapped);
+    mockReg1.push_back(cRegWrapped);
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("h", mockPair2);
+    mockGateRequest1.push_back(compileCompoundGateRequest("cx", mockPair)[0]);
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+
+    GPUDevice device = GPUDevice();
+    device.runSV(mockReg1, blocks);
+    std::map<std::string, std::vector<Qubit*>> results = device.revealQuantumState();
+    if (!(results["q"][0]->fetch(0)->real() == 1) || !(results["q"][1]->fetch(0)->real() == 1)) {
+        return false;
+    }
+    return true;
+}
+
 // Measurement Test
 
 bool runSimpleMeasurementTest() {
@@ -706,6 +738,8 @@ void ValkyrieTests::runGPUDeviceTests()
     handleTestResult(gpuQuantumCircuitTest(), "GPU Device Test: Checking whether GPU Quantum Circuit is able to compile calculations");
     // Test GPU device all up
     handleTestResult(gpuDeviceAllUpTest(), "GPU Device Test: Full run all up test");
+    // Test GPU using statevector
+    handleTestResult(gpuStateVectorRunTest(), "GPU Device Test: Statevector simulation for GPU");
 }
 
 void ValkyrieTests::runMeasurementTests()

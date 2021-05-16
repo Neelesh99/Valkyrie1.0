@@ -206,7 +206,7 @@ void CPUQuantumProcessor::calculate()
 {
 	while (!circuit_->checkComplete()) {
 		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
-		for (auto calc : calcBlock) {	// parallelisation next iteration
+		for (auto calc : calcBlock) {
 			Gate* gate = calc.getGate();			
 			int m = gate->getM();
 			int n = gate->getN();
@@ -257,7 +257,7 @@ void CPUQuantumProcessor::calculateWithStateVector()
 {
 	while (!circuit_->checkComplete()) {
 		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
-		for (auto calc : calcBlock) {	// parallelisation next iteration
+		for (auto calc : calcBlock) {
 			Gate* gate = calc.getGate();
 			int m = gate->getM();
 			int n = gate->getN();

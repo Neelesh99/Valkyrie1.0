@@ -141,6 +141,66 @@ bool GPUQuantumCircuit::checkComplete()
 	return done_;
 }
 
+std::vector<std::vector<std::complex<double>>> GPUQuantumProcessor::getCXResult(int n)
+{
+	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
+	if (n < 2) {
+		return std::vector<std::vector<std::complex<double>>>();
+	}
+	std::vector<std::vector<std::complex<double>>> output;
+	// overall sidelength of resultant gate
+	int dimOverall = std::pow(2, n);
+	// number of I multiplications required
+	int leftOver = n - 2;
+	if (leftOver == 0) {
+		output = { {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 0} };
+		return output;
+	}
+	output.resize(dimOverall);
+	for (int i = 0; i < dimOverall; i++) {
+		std::vector<std::complex<double>> subVec;
+		subVec.resize(dimOverall);
+		output[i] = subVec;
+	}
+	for (int i = 0; i < std::pow(2, leftOver); i++) {
+		output[4 * i][4 * i] = 1;
+		output[4 * i + 1][4 * i + 1] = 1;
+		output[4 * i + 2][4 * i + 3] = 1;
+		output[4 * i + 3][4 * i + 2] = 1;
+	}
+	return output;
+}
+
+std::vector<std::vector<std::complex<double>>> GPUQuantumProcessor::getGenericUResult(Gate* gate, int n)
+{
+	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
+	if (n < 1) {
+		return std::vector<std::vector<std::complex<double>>>();
+	}
+	std::vector<std::vector<std::complex<double>>> output;
+	// overall sidelength of resultant gate
+	int dimOverall = std::pow(2, n);
+	// number of I multiplications required
+	int leftOver = n - 1;
+	if (leftOver == 0) {
+		output = gate->getArray();
+		return output;
+	}
+	output.resize(dimOverall);
+	for (int i = 0; i < dimOverall; i++) {
+		std::vector<std::complex<double>> subVec;
+		subVec.resize(dimOverall);
+		output[i] = subVec;
+	}
+	for (int i = 0; i < std::pow(2, leftOver); i++) {
+		output[2 * i][2 * i] = gate->fetchValue(0, 0);
+		output[2 * i][2 * i + 1] = gate->fetchValue(0, 1);
+		output[2 * i + 1][2 * i] = gate->fetchValue(1, 0);
+		output[2 * i + 1][2 * i + 1] = gate->fetchValue(1, 1);
+	}
+	return output;
+}
+
 void GPUQuantumProcessor::loadCircuit(AbstractQuantumCircuit* circuit)
 {
 	circuit_ = circuit;
@@ -196,6 +256,66 @@ Error:
 	cudaFree(gateValues);
 }
 
+void GPUQuantumProcessor::calculateWithStateVector()
+{
+	// Generate initial arrays
+	//cuDoubleComplex* initialValues;
+	cuDoubleComplex* beforeGate;
+	cuDoubleComplex* gateValues;
+	cuDoubleComplex* afterGate;
+	while (!circuit_->checkComplete()) {
+		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
+		for (auto calc : calcBlock) {			
+			Gate* gate = calc.getGate();
+			int m = gate->getM();
+			int n = gate->getN();
+			int qubitN = m / 2;
+			StateVector* sv = circuit_->getStateVector();
+			int gateDim = sv->getState().size();
+			std::vector<SVPair> newOrder = calc.getNewOrder(sv->getOrder());
+			StateVector* reordered = sv->reorder(newOrder);
+			std::vector<std::vector<std::complex<double>>> gateValuesV;
+			if (m == 2) {
+				gateValuesV = getGenericUResult(gate, sv->getN());
+			}
+			if (m == 4) {
+				gateValuesV = getCXResult(sv->getN());
+			}
+			if (gateValuesV.size() == 0) {
+				return;
+			}
+			cudaError_t cudaStatus;
+			// Allocate shared space
+			cudaStatus = cudaMalloc((void**)&beforeGate, gateDim * sizeof(cuDoubleComplex));
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed!");
+				goto Error;
+			}
+			cudaStatus = cudaMalloc((void**)&afterGate, gateDim * sizeof(cuDoubleComplex));
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed!");
+				goto Error;
+			}
+			cudaStatus = cudaMalloc((void**)&gateValues, (gateDim * gateDim) * sizeof(cuDoubleComplex));
+			if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed!");
+				goto Error;
+			}
+			std::vector<std::complex<double>> res = ValkGPULib::calculateGPUSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);
+			reordered->directModify(res);
+			sv->reconcile(reordered);
+			cudaFree(beforeGate);
+			cudaFree(afterGate);
+			cudaFree(gateValues);
+		}
+	}
+	return;
+Error:
+	cudaFree(beforeGate);
+	cudaFree(afterGate);
+	cudaFree(gateValues);
+}
+
 std::map<std::string, std::vector<Qubit*>> GPUQuantumProcessor::qubitMapfetchQubitValues()
 {
 	return circuit_->returnResults();
@@ -231,6 +351,12 @@ void GPUDevice::runSimulation()
 	quantumProcessor->calculate();
 }
 
+void GPUDevice::runSimulationSV()
+{
+	quantumProcessor->loadCircuit(quantumCircuit);
+	quantumProcessor->calculateWithStateVector();
+}
+
 void GPUDevice::run(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks)
 {
 	for (auto reg : registers) {
@@ -241,6 +367,18 @@ void GPUDevice::run(std::vector<Register> registers, std::vector<ConcurrentBlock
 		loadConcurrentBlock(block);
 	}
 	runSimulation();
+}
+
+void GPUDevice::runSV(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks)
+{
+	for (auto reg : registers) {
+		loadRegister(reg);
+	}
+	transferQubitMap();
+	for (auto block : blocks) {
+		loadConcurrentBlock(block);
+	}
+	runSimulationSV();
 }
 
 std::map<std::string, std::vector<Qubit*>> GPUDevice::revealQuantumState()
