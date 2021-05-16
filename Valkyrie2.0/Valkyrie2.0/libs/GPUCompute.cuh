@@ -215,6 +215,7 @@ namespace ValkGPULib {
 		if (arraySize > 256) {
 			int blockSize = 256;
 			int numBlocks = (arraySize * arraySize + blockSize - 1) / blockSize;
+			ValkGPULib::svMatrixMul << <numBlocks, blockSize >> > (afterGate, beforeGate, gateValues, arraySize);
 		}
 		else {
 			ValkGPULib::svMatrixMul << <1, arraySize >> > (afterGate, beforeGate, gateValues, arraySize);

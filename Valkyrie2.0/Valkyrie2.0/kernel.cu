@@ -33,9 +33,10 @@ void DisplayHeader();
 void printHelp();
 DeviceType resolveDeviceType(std::vector<std::string> arguments);
 std::string fetchFileName(std::vector<std::string> arguments);
-void CPURun(std::string filename);
-void GPURun(std::string filename);
+void CPURun(std::string filename, bool SV);
+void GPURun(std::string filename, bool SV);
 void handleInfoRequest(std::vector<std::string> arguments);
+bool resolveComputeMode(std::vector<std::string> arguments);
 
 
 __global__ void addKernel(int *c, const int *a, const int *b)
@@ -150,11 +151,12 @@ int main(int argc, char *argv[])
         printHelp();
         return 1;
     }
+    bool svMode = resolveComputeMode(arguments);
     if (type == CPU_) {
-        CPURun(fileName);
+        CPURun(fileName, svMode);
     }
     else {
-        GPURun(fileName);
+        GPURun(fileName, svMode);
     }
 
     
@@ -298,6 +300,15 @@ DeviceType resolveDeviceType(std::vector<std::string> arguments) {
     return val;
 }
 
+bool resolveComputeMode(std::vector<std::string> arguments) {
+    for (std::string argument : arguments) {
+        if (argument == "-sv") {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string fetchFileName(std::vector<std::string> arguments) {
     std::string returnVal = "INVALID";
     if (arguments.size() == 0) {
@@ -311,7 +322,7 @@ std::string fetchFileName(std::vector<std::string> arguments) {
     return returnVal;
 }
 
-void CPURun(std::string filename) {
+void CPURun(std::string filename, bool SV) {
     std::ifstream stream;
     stream.open(filename);
     if (!stream.is_open()) {
@@ -334,7 +345,12 @@ void CPURun(std::string filename) {
     Stager stage = Stager();
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     CPUDevice device = CPUDevice();
-    device.run(stage.getRegisters(), blocks);
+    if (!SV) {
+        device.run(stage.getRegisters(), blocks);
+    }
+    else {
+        device.runSV(stage.getRegisters(), blocks);
+    }    
     StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
     measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
@@ -343,7 +359,7 @@ void CPURun(std::string filename) {
     measure.printClassicalRegisters();
 }
 
-void GPURun(std::string filename) {
+void GPURun(std::string filename, bool SV) {
     std::ifstream stream;
     stream.open(filename);
     if (!stream.is_open()) {
@@ -366,7 +382,12 @@ void GPURun(std::string filename) {
     Stager stage = Stager();
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     GPUDevice device = GPUDevice();
-    device.run(stage.getRegisters(), blocks);
+    if (!SV) {
+        device.run(stage.getRegisters(), blocks);
+    }
+    else {
+        device.runSV(stage.getRegisters(), blocks);
+    }
     StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
     measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
