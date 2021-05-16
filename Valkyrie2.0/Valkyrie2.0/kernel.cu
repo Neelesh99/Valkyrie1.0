@@ -283,6 +283,7 @@ void printHelp() {
     std::cout << "CPU execution mode: \t \t \t -c" << std::endl;
     std::cout << "GPU execution mode: \t \t \t -g" << std::endl;
     std::cout << "Path to file: \t \t \t \t -o <filepath>" << std::endl;
+    std::cout << "State vector computation: -sv" << std::endl;
 }
 
 DeviceType resolveDeviceType(std::vector<std::string> arguments) {
