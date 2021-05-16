@@ -565,6 +565,46 @@ bool runSimpleMeasurementTest() {
     return true;
 }
 
+// StateVector Tests
+bool stateVectorSimpleReorderTest() {
+    std::vector<Register> mockReg1;
+    QuantumRegister qReg = QuantumRegister("q", 3);
+    ClassicalRegister cReg = ClassicalRegister("c", 3);
+    Register qRegWrapped = Register(quantum_, qReg);
+    Register cRegWrapped = Register(classical_, cReg);
+    mockReg1.push_back(qRegWrapped);
+    mockReg1.push_back(cRegWrapped);
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("h", mockPair2);
+    mockGateRequest1.push_back(compileCompoundGateRequest("cx", mockPair)[0]);
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+
+    CPUDevice device = CPUDevice();
+    device.run(mockReg1, blocks);
+    StateVector* sv = device.getStateVector();
+    std::vector<std::complex<double>> oldState = sv->getState();
+    std::vector<SVPair> newOrder;
+    SVPair elem1("q", 0);
+    SVPair elem2("q", 2);
+    SVPair elem3("q", 1);
+    newOrder = { elem1, elem2, elem3 };
+    StateVector* reordered = sv->reorder(newOrder);
+    std::vector<std::complex<double>> newState = reordered->getState();
+    if (!(newState[0] == oldState[0]) || !(newState[5] == oldState[6])) {
+        return false;
+    }
+    return true;
+}
+
 
 
 void ValkyrieTests::runParserTests() {
@@ -632,6 +672,11 @@ void ValkyrieTests::runMeasurementTests()
     handleTestResult(runSimpleMeasurementTest(), "Measurement test: Checking whether simple emasure case is handled");
 }
 
+void ValkyrieTests::runStateVectorTests()
+{
+    handleTestResult(stateVectorSimpleReorderTest(), "StateVector test: checking reordering works");
+}
+
 
 
 ValkyrieTests::ValkyrieTests()
@@ -654,6 +699,8 @@ void ValkyrieTests::runTests()
     runGPUDeviceTests();
     // Measurement Test
     runMeasurementTests();
+    // StateVector tests
+    runStateVectorTests();
 }
 
 void ValkyrieTests::handleTestResult(bool res, std::string testDescription)

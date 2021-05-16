@@ -12,6 +12,7 @@ private:
 	void runCPUDeviceTests();
 	void runGPUDeviceTests();
 	void runMeasurementTests();
+	void runStateVectorTests();
 public:	
 	ValkyrieTests();
 	void runTests();

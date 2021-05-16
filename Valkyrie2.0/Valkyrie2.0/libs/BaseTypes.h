@@ -3,6 +3,7 @@
 #include <string>
 #include <complex>
 #include <map>
+#include <iostream>
 
 struct idLocationPairs {
 	std::vector<std::string> identifiers;
@@ -18,6 +19,9 @@ struct SVPair {
 	SVPair(std::string name, int location) {
 		name_ = name;
 		location_ = location;
+	}
+	bool areEqual(SVPair comp) {
+		return comp.location_ == location_ && comp.name_ == name_;
 	}
 };
 
@@ -321,6 +325,20 @@ public:
 	std::vector<SVPair> getLocations() {
 		return locations_;
 	}
+	std::vector<SVPair> getNewOrder(std::vector<SVPair> oldOrder) {
+		if (locations_.size() != 2) {
+			return oldOrder;
+		}
+		std::vector<SVPair> newOrder;
+		for (int i = 0; i < oldOrder.size(); i++) {
+			if (!locations_[0].areEqual(oldOrder[i]) && !locations_[1].areEqual(oldOrder[i])) {
+				newOrder.push_back(oldOrder[i]);
+			}
+		}
+		newOrder.push_back(locations_[0]);
+		newOrder.push_back(locations_[1]);
+		return newOrder;
+	}
 
 	std::vector<Qubit*> getQubits() {
 		return qubitValues_;
@@ -353,6 +371,8 @@ private:
 	std::vector<SVPair> positions_;
 	std::vector<std::complex<double>> state_;
 	std::map<std::string, std::vector<Qubit*>>* qubitMap_;
+	StateVector* reordered_;
+	bool isReorder = false;
 
 	int inverseTail(int nTotal, int indexInPositions, int locationInStateVec) {
 		int j = std::pow(2, (nTotal - indexInPositions));
@@ -407,14 +427,55 @@ private:
 		return -1;
 	}
 
+	int searchIndex(SVPair val, std::vector<SVPair> positions) {
+		for (int i = 0; i < positions.size(); i++) {
+			SVPair res = positions[i];
+			if (res.name_ == val.name_ && res.location_ == val.location_) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	std::vector<int> mapToOldScheme(std::vector<int> values, std::vector<SVPair> newScheme, std::vector<SVPair> oldScheme) {
+		std::vector<int> oldValues;
+		int n = values.size();
+		oldValues.resize(n);
+		for (int i = 0; i < n; i++) {
+			oldValues[i] = values[searchIndex(oldScheme[i], newScheme)];
+		}
+		return oldValues;
+	}
+
+	int resolvePosition(std::vector<int> values) {
+		int n = values.size();
+		int position = 0;
+		for (int i = 0; i < n; i++) {
+			int j = n - i;
+			int val = values[i] * std::pow(2, j - 1);
+			position += val;
+		}
+		return position;
+	}
+
 public:
 	StateVector() {};
 	StateVector(std::map<std::string, std::vector<Qubit*>>* linkToQubits) {
 		qubitMap_ = linkToQubits;
+		initialiseReorder();
 	}
 
 	std::vector<std::complex<double>> getState() {
 		return state_;
+	}
+
+	void initialiseReorder() {
+		reordered_ = new StateVector();
+		reordered_->setReorder(true);
+	}
+
+	void setReorder(bool reorder) {
+		isReorder = reorder;
 	}
 
 	void tensorProduct() {
@@ -437,6 +498,24 @@ public:
 			}
 			state_[i] = start;
 		}
+	}
+
+	// Will only be called during reordering
+	void tensorProduct(std::vector<SVPair> newOrder, std::vector<SVPair> oldOrder, std::vector<std::complex<double>> oldState) {
+		positions_ = newOrder;
+		int n = positions_.size();
+		int dimStateVec = std::pow(2, n);
+		state_.resize(dimStateVec);
+		
+		for (int i = 0; i < dimStateVec; i++) {
+			std::vector<int> newSchemeVals;
+			for (int j = 0; j < n; j++) {
+				newSchemeVals.push_back(inverseTail(n, j, i));
+			}
+			std::vector<int> oldSchemeVals = mapToOldScheme(newSchemeVals, newOrder, oldOrder);
+			state_[i] = oldState[resolvePosition(oldSchemeVals)];
+		}
+
 	}
 
 	void modifyState(std::vector<std::complex<double>> newValues, SVPair loc1, SVPair loc2) {
@@ -472,5 +551,20 @@ public:
 	int getVal(int positionInStateVector, SVPair pair) {
 		int position = searchIndex(pair);
 		return inverseTail(positions_.size(), position, positionInStateVector);
+	}
+
+	StateVector* reorder(std::vector<SVPair> newOrder) {		
+		reordered_->tensorProduct(newOrder, positions_, state_);
+		return reordered_;
+	}
+
+	std::vector<SVPair> getOrder() {
+		return positions_;
+	}
+
+	~StateVector() {
+		if (!isReorder) {
+			delete reordered_;
+		}
 	}
 };

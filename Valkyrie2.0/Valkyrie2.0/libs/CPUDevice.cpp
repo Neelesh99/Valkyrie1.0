@@ -148,6 +148,7 @@ void CPUQuantumProcessor::calculate()
 		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
 		for (auto calc : calcBlock) {	// parallelisation next iteration
 			Gate* gate = calc.getGate();
+			std::vector<SVPair> newOrder = calc.getNewOrder(circuit_->getStateVector()->getOrder());
 			int m = gate->getM();
 			int n = gate->getN();
 			int qubitN = m / 2;
