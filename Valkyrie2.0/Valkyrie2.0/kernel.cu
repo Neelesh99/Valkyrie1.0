@@ -18,6 +18,8 @@
 
 #include <stdio.h>
 
+#include "test/ValkyrieTests.h"
+
 using namespace antlr4;
 
 std::string getexepath()
@@ -31,9 +33,10 @@ void DisplayHeader();
 void printHelp();
 DeviceType resolveDeviceType(std::vector<std::string> arguments);
 std::string fetchFileName(std::vector<std::string> arguments);
-void CPURun(std::string filename);
-void GPURun(std::string filename);
+void CPURun(std::string filename, bool SV);
+void GPURun(std::string filename, bool SV);
 void handleInfoRequest(std::vector<std::string> arguments);
+bool resolveComputeMode(std::vector<std::string> arguments);
 
 
 __global__ void addKernel(int *c, const int *a, const int *b)
@@ -148,12 +151,15 @@ int main(int argc, char *argv[])
         printHelp();
         return 1;
     }
+    bool svMode = resolveComputeMode(arguments);
     if (type == CPU_) {
-        CPURun(fileName);
+        CPURun(fileName, svMode);
     }
     else {
-        GPURun(fileName);
+        GPURun(fileName, svMode);
     }
+
+    
     
     /*for (int i = 0; i < 1; i++) {
         timeGPUExecution();
@@ -277,6 +283,7 @@ void printHelp() {
     std::cout << "CPU execution mode: \t \t \t -c" << std::endl;
     std::cout << "GPU execution mode: \t \t \t -g" << std::endl;
     std::cout << "Path to file: \t \t \t \t -o <filepath>" << std::endl;
+    std::cout << "State vector computation: -sv" << std::endl;
 }
 
 DeviceType resolveDeviceType(std::vector<std::string> arguments) {
@@ -294,6 +301,15 @@ DeviceType resolveDeviceType(std::vector<std::string> arguments) {
     return val;
 }
 
+bool resolveComputeMode(std::vector<std::string> arguments) {
+    for (std::string argument : arguments) {
+        if (argument == "-sv") {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string fetchFileName(std::vector<std::string> arguments) {
     std::string returnVal = "INVALID";
     if (arguments.size() == 0) {
@@ -307,7 +323,7 @@ std::string fetchFileName(std::vector<std::string> arguments) {
     return returnVal;
 }
 
-void CPURun(std::string filename) {
+void CPURun(std::string filename, bool SV) {
     std::ifstream stream;
     stream.open(filename);
     if (!stream.is_open()) {
@@ -330,19 +346,21 @@ void CPURun(std::string filename) {
     Stager stage = Stager();
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     CPUDevice device = CPUDevice();
-    device.run(stage.getRegisters(), blocks);
-    MeasurementCalculator measure = MeasurementCalculator(registers);
-    measure.registerHandover(device.revealQuantumState());
-    measure.measureAll();
-    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
-    std::cout << "Measurement complete" << std::endl;
+    if (!SV) {
+        device.run(stage.getRegisters(), blocks);
+    }
+    else {
+        device.runSV(stage.getRegisters(), blocks);
+    }    
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
+    measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
     measure.passMeasurementsIntoClassicalRegisters();
     measure.printClassicalRegisters();
 }
 
-void GPURun(std::string filename) {
+void GPURun(std::string filename, bool SV) {
     std::ifstream stream;
     stream.open(filename);
     if (!stream.is_open()) {
@@ -365,12 +383,14 @@ void GPURun(std::string filename) {
     Stager stage = Stager();
     std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
     GPUDevice device = GPUDevice();
-    device.run(stage.getRegisters(), blocks);
-    MeasurementCalculator measure = MeasurementCalculator(registers);
-    measure.registerHandover(device.revealQuantumState());
-    measure.measureAll();
-    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
-    std::cout << "Measurement complete" << std::endl;
+    if (!SV) {
+        device.run(stage.getRegisters(), blocks);
+    }
+    else {
+        device.runSV(stage.getRegisters(), blocks);
+    }
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
+    measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
     measure.passMeasurementsIntoClassicalRegisters();
@@ -382,6 +402,17 @@ void handleInfoRequest(std::vector<std::string> arguments)
     for (auto argument : arguments) {
         if (argument == "-gpuInfo") {
             DisplayHeader();
+        }
+        if (argument == "-test") {
+            ValkyrieTests tester = ValkyrieTests();
+            tester.runTests();
+            std::cout << "Number of Tests passed: " << tester.noPassed() << std::endl;
+            std::cout << "Test pass percentage: " << tester.getPercentagePassed() << std::endl;
+            if (tester.getPercentagePassed() != 100.0) {
+                for (auto fail : tester.testsFailed()) {
+                    std::cout << "Test Failed: " << fail << std::endl;
+                }
+            }
         }
     }
 }

@@ -33,6 +33,8 @@ private:
 	std::vector<std::vector<Calculation>> calculations_;
 	GPUGateFactory* gateFactory_;
 	int calcCounter = 0;
+	std::vector<SVPair> zipSVPairs(std::vector<std::string> names, std::vector<int> locs);
+	StateVector* sv_;
 public:
 	GPUQuantumCircuit(GPUGateFactory* gateFactory) {
 		gateFactory_ = gateFactory;
@@ -43,19 +45,26 @@ public:
 	void loadBlock(ConcurrentBlock block);
 	std::vector<Calculation> getNextCalculation();
 	std::map<std::string, std::vector<Qubit*>> returnResults();
+	StateVector* getStateVector();
 	bool checkComplete();
+	~GPUQuantumCircuit() {
+		delete sv_;
+	}
 };
 
 class GPUQuantumProcessor : public AbstractQuantumProcessor {
 private:
 	DeviceType type_;
 	AbstractQuantumCircuit* circuit_;
+	std::vector<std::vector<std::complex<double>>> getCXResult(int n);
+	std::vector<std::vector<std::complex<double>>> getGenericUResult(Gate* gate, int n);
 public:
 	GPUQuantumProcessor() {
 		type_ = CPU_;
 	}
 	void loadCircuit(AbstractQuantumCircuit* circuit);
 	void calculate();
+	void calculateWithStateVector();
 	std::map<std::string, std::vector<Qubit*>> qubitMapfetchQubitValues();
 };
 
@@ -79,7 +88,9 @@ public:
 	void transferQubitMap();
 	void loadConcurrentBlock(ConcurrentBlock block);
 	void runSimulation();
+	void runSimulationSV();
 	void run(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks);
+	void runSV(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks);
 	std::map<std::string, std::vector<Qubit*>> revealQuantumState();
 	void prettyPrintQubitStates(std::map<std::string, std::vector<Qubit*>> qubits) {
 		for (std::map<std::string, std::vector<Qubit*>>::iterator it = qubits.begin(); it != qubits.end(); ++it) {
@@ -89,6 +100,9 @@ public:
 				std::cout << "Location [" << i << "]: " << regQubits[i]->fetch(0)->real() << "+" << regQubits[i]->fetch(0)->imag() << "i" << " ||| " << regQubits[i]->fetch(1)->real() << "+" << regQubits[i]->fetch(1)->imag() << "i" << std::endl;
 			}
 		}
+	}
+	StateVector* getStateVector() {
+		return quantumCircuit->getStateVector();
 	}
 	~GPUDevice() {
 		delete qubitFactory;

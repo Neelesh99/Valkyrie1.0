@@ -106,6 +106,7 @@
     <ClInclude Include="libs\qasm2Parser.h" />
     <ClInclude Include="libs\qasm2Visitor.h" />
     <ClInclude Include="libs\staging.h" />
+    <ClInclude Include="test\ValkyrieTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libs\qasm2.interp" />
@@ -121,6 +122,8 @@
     <ClCompile Include="libs\qasm2Lexer.cpp" />
     <ClCompile Include="libs\qasm2Parser.cpp" />
     <ClCompile Include="libs\qasm2Visitor.cpp" />
+    <ClCompile Include="test\ValkyrieTest.cpp" />
+    <ClCompile Include="test\ValkyrieTests.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
