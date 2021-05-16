@@ -159,10 +159,10 @@ std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getCXResult(
 		output[i] = subVec;
 	}
 	for (int i = 0; i < std::pow(2, leftOver); i++) {
-		output[4 * i][4 * i + 2] = 1;
-		output[4 * i + 1][4 * i + 3] = 1;
-		output[4 * i + 2][4 * i] = 1;
-		output[4 * i + 3][4 * i + 1] = 1;
+		output[4 * i][4 * i] = 1;
+		output[4 * i + 1][4 * i + 1] = 1;
+		output[4 * i + 2][4 * i + 3] = 1;
+		output[4 * i + 3][4 * i + 2] = 1;
 	}
 	return output;
 }
@@ -253,6 +253,42 @@ void CPUQuantumProcessor::calculate()
 	}
 }
 
+void CPUQuantumProcessor::calculateWithStateVector()
+{
+	while (!circuit_->checkComplete()) {
+		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
+		for (auto calc : calcBlock) {	// parallelisation next iteration
+			Gate* gate = calc.getGate();
+			int m = gate->getM();
+			int n = gate->getN();
+			int qubitN = m / 2;
+			StateVector* sv = circuit_->getStateVector();
+			std::vector<SVPair> newOrder = calc.getNewOrder(sv->getOrder());
+			StateVector* reordered = sv->reorder(newOrder);
+			std::vector<std::vector<std::complex<double>>> gateValues;
+			if (m == 2) {
+				gateValues = getGenericUResult(gate, sv->getN());
+			}
+			if (m == 4) {
+				gateValues = getCXResult(sv->getN());
+			}
+			if (gateValues.size() == 0) {
+				return;
+			}
+			std::vector<std::complex<double>> newValues;
+			for (int i = 0; i < gateValues.size(); i++) {
+				std::complex<double> acc = 0;
+				for (int j = 0; j < gateValues.size(); j++) {
+					acc += gateValues[i][j] * reordered->getSVValue(j);
+				}
+				newValues.push_back(acc);				
+			}
+			reordered->directModify(newValues);
+			sv->reconcile(reordered);
+		}
+	}
+}
+
 std::map<std::string, std::vector<Qubit*>> CPUQuantumProcessor::qubitMapfetchQubitValues()
 {
 	return circuit_->returnResults();
@@ -288,6 +324,12 @@ void CPUDevice::runSimulation()
 	quantumProcessor->calculate();
 }
 
+void CPUDevice::runSimulationSV()
+{
+	quantumProcessor->loadCircuit(quantumCircuit);
+	quantumProcessor->calculateWithStateVector();
+}
+
 void CPUDevice::run(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks)
 {
 	for (auto reg : registers) {
@@ -298,6 +340,18 @@ void CPUDevice::run(std::vector<Register> registers, std::vector<ConcurrentBlock
 		loadConcurrentBlock(block);
 	}
 	runSimulation();
+}
+
+void CPUDevice::runSV(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks)
+{
+	for (auto reg : registers) {
+		loadRegister(reg);
+	}
+	transferQubitMap();
+	for (auto block : blocks) {
+		loadConcurrentBlock(block);
+	}
+	runSimulationSV();
 }
 
 std::map<std::string, std::vector<Qubit*>> CPUDevice::revealQuantumState()

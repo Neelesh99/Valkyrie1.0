@@ -415,6 +415,38 @@ bool cpuDeviceAllUpTest() {
     return true;
 }
 
+bool cpuStateVectorRunTest() {
+    // Setting up all required info
+    std::vector<Register> mockReg1;
+    QuantumRegister qReg = QuantumRegister("q", 3);
+    ClassicalRegister cReg = ClassicalRegister("c", 3);
+    Register qRegWrapped = Register(quantum_, qReg);
+    Register cRegWrapped = Register(classical_, cReg);
+    mockReg1.push_back(qRegWrapped);
+    mockReg1.push_back(cRegWrapped);
+    std::vector<GateRequest> mockGateRequest1;
+    idLocationPairs mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(0);
+    idLocationPairs mockPair2 = mockPair;
+    mockPair.identifiers.push_back("q");
+    mockPair.locations.push_back(1);
+
+    mockGateRequest1 = compileCompoundGateRequest("h", mockPair2);
+    mockGateRequest1.push_back(compileCompoundGateRequest("cx", mockPair)[0]);
+    Stager stager = Stager(mockReg1, mockGateRequest1);
+
+    std::vector<ConcurrentBlock> blocks = stager.getConcurrencyBlocks();
+
+    CPUDevice device = CPUDevice();
+    device.runSV(mockReg1, blocks);
+    std::map<std::string, std::vector<Qubit*>> results = device.revealQuantumState();
+    if (!(results["q"][0]->fetch(0)->real() == 1) || !(results["q"][1]->fetch(0)->real() == 1)) {
+        return false;
+    }
+    return true;
+}
+
 // GPU Device Tests
 bool gpuQubitFactoryTest() {
     GPUQubitFactory cpuQubitFactory = GPUQubitFactory();
@@ -602,10 +634,17 @@ bool stateVectorSimpleReorderTest() {
     if (!(newState[0] == oldState[0]) || !(newState[5] == oldState[6])) {
         return false;
     }
+    reordered->directModify(2, 5);
+    newState = reordered->getState();
+    sv->reconcile(reordered);
+    oldState = sv->getState();
+    if (!(newState[2] == oldState[1])) {
+        return false;
+    }
     return true;
 }
 
-
+// Test banks
 
 void ValkyrieTests::runParserTests() {
 
@@ -653,6 +692,8 @@ void ValkyrieTests::runCPUDeviceTests()
     handleTestResult(cpuQuantumCircuitTest(), "CPU Device Test: Checking whether CPU Quantum Circuit is able to compile calculations");
     // Test CPU device all up
     handleTestResult(cpuDeviceAllUpTest(), "CPU Device Test: Full run all up test");
+
+    handleTestResult(cpuStateVectorRunTest(), "CPU Device Test: Checking State vector operation");
 }
 
 void ValkyrieTests::runGPUDeviceTests()

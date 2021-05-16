@@ -65,6 +65,7 @@ public:
 	}
 	void loadCircuit(AbstractQuantumCircuit* circuit);
 	void calculate();
+	void calculateWithStateVector();
 	std::map<std::string, std::vector<Qubit*>> qubitMapfetchQubitValues();
 };
 
@@ -88,7 +89,9 @@ public:
 	void transferQubitMap();
 	void loadConcurrentBlock(ConcurrentBlock block);
 	void runSimulation();
+	void runSimulationSV();
 	void run(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks);
+	void runSV(std::vector<Register> registers, std::vector<ConcurrentBlock> blocks);
 	std::map<std::string, std::vector<Qubit*>> revealQuantumState();
 	void prettyPrintQubitStates(std::map<std::string, std::vector<Qubit*>> qubits) {
 		for (std::map<std::string, std::vector<Qubit*>>::iterator it = qubits.begin(); it != qubits.end(); ++it) {

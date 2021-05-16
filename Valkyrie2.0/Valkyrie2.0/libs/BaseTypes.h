@@ -554,6 +554,19 @@ public:
 		calculateNewVals(1, 1, newValues, loc1Index, loc2Index);
 	}
 
+	void directModify(int index, std::complex<double> value) {
+		if (index >= state_.size()) {
+			return;
+		}
+		state_[index] = value;
+	}
+	void directModify(std::vector<std::complex<double>> values) {
+		if (values.size() != state_.size()) {
+			return;
+		}
+		state_ = values;
+	}
+
 	void quickRefresh() {
 		int n = positions_.size();
 		int dimStateVec = std::pow(2, n);
@@ -579,12 +592,31 @@ public:
 		return reordered_;
 	}
 
+	void reconcile(StateVector* reordered) {
+		int n = positions_.size();
+		int dimStateVec = std::pow(2, n);
+		state_.resize(dimStateVec);
+
+		for (int i = 0; i < dimStateVec; i++) {
+			std::vector<int> newSchemeVals;
+			for (int j = 0; j < n; j++) {
+				newSchemeVals.push_back(inverseTail(n, j, i));
+			}
+			std::vector<int> oldSchemeVals = mapToOldScheme(newSchemeVals, positions_, reordered->getOrder());
+			state_[i] = reordered->getState()[resolvePosition(oldSchemeVals)];
+		}
+	}
+
 	int getN() {
 		return positions_.size();
 	}
 
 	std::vector<SVPair> getOrder() {
 		return positions_;
+	}
+
+	std::complex<double> getSVValue(int i) {
+		return state_[i];
 	}
 
 	~StateVector() {
