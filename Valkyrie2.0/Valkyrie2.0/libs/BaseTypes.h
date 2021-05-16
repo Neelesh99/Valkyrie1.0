@@ -294,6 +294,9 @@ public:
 		}*/
 		return gateArray_[x][y];
 	}
+	std::vector<std::vector<std::complex<double>>> getArray() {
+		return gateArray_;
+	}
 	int getM() {
 		return m_;
 	}
@@ -309,6 +312,29 @@ private:
 	//std::complex<double>* qubitValues_; next iteration
 	std::vector<Qubit*> qubitValues_;
 	std::vector<SVPair> locations_;
+	
+	std::vector<SVPair> getNewOrder1(std::vector<SVPair> oldOrder) {
+		std::vector<SVPair> newOrder;
+		for (int i = 0; i < oldOrder.size(); i++) {
+			if (!locations_[0].areEqual(oldOrder[i])) {
+				newOrder.push_back(oldOrder[i]);
+			}
+		}
+		newOrder.push_back(locations_[0]);
+		return newOrder;
+	}
+
+	std::vector<SVPair> getNewOrder2(std::vector<SVPair> oldOrder) {
+		std::vector<SVPair> newOrder;
+		for (int i = 0; i < oldOrder.size(); i++) {
+			if (!locations_[0].areEqual(oldOrder[i]) && !locations_[1].areEqual(oldOrder[i])) {
+				newOrder.push_back(oldOrder[i]);
+			}
+		}
+		newOrder.push_back(locations_[0]);
+		newOrder.push_back(locations_[1]);
+		return newOrder;
+	}
 public:
 	Calculation(Gate* gate, std::vector<Qubit*> qubitVals, std::vector<SVPair> locations) {
 		gate_ = gate;
@@ -326,18 +352,13 @@ public:
 		return locations_;
 	}
 	std::vector<SVPair> getNewOrder(std::vector<SVPair> oldOrder) {
-		if (locations_.size() != 2) {
+		if (locations_.size() != 2 && locations_.size() != 1) {
 			return oldOrder;
 		}
-		std::vector<SVPair> newOrder;
-		for (int i = 0; i < oldOrder.size(); i++) {
-			if (!locations_[0].areEqual(oldOrder[i]) && !locations_[1].areEqual(oldOrder[i])) {
-				newOrder.push_back(oldOrder[i]);
-			}
+		if (locations_.size() == 2) {
+			return getNewOrder2(oldOrder);
 		}
-		newOrder.push_back(locations_[0]);
-		newOrder.push_back(locations_[1]);
-		return newOrder;
+		return getNewOrder1(oldOrder);
 	}
 
 	std::vector<Qubit*> getQubits() {
@@ -556,6 +577,10 @@ public:
 	StateVector* reorder(std::vector<SVPair> newOrder) {		
 		reordered_->tensorProduct(newOrder, positions_, state_);
 		return reordered_;
+	}
+
+	int getN() {
+		return positions_.size();
 	}
 
 	std::vector<SVPair> getOrder() {

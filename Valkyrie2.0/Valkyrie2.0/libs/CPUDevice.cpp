@@ -137,6 +137,66 @@ bool CPUQuantumCircuit::checkComplete()
 	return done_;
 }
 
+std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getCXResult(int n)
+{
+	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
+	if (n < 2) {
+		return std::vector<std::vector<std::complex<double>>>();
+	}
+	std::vector<std::vector<std::complex<double>>> output;
+	// overall sidelength of resultant gate
+	int dimOverall = std::pow(2, n);
+	// number of I multiplications required
+	int leftOver = n - 2;
+	if (leftOver == 0) {
+		output = { {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 0} };
+		return output;
+	}
+	output.resize(dimOverall);
+	for (int i = 0; i < dimOverall; i++) {
+		std::vector<std::complex<double>> subVec;
+		subVec.resize(dimOverall);
+		output[i] = subVec;
+	}
+	for (int i = 0; i < std::pow(2, leftOver); i++) {
+		output[4 * i][4 * i + 2] = 1;
+		output[4 * i + 1][4 * i + 3] = 1;
+		output[4 * i + 2][4 * i] = 1;
+		output[4 * i + 3][4 * i + 1] = 1;
+	}
+	return output;
+}
+
+std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getGenericUResult(Gate* gate, int n)
+{
+	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
+	if (n < 1) {
+		return std::vector<std::vector<std::complex<double>>>();
+	}
+	std::vector<std::vector<std::complex<double>>> output;
+	// overall sidelength of resultant gate
+	int dimOverall = std::pow(2, n);
+	// number of I multiplications required
+	int leftOver = n - 1;
+	if (leftOver == 0) {
+		output = gate->getArray();
+		return output;
+	}
+	output.resize(dimOverall);
+	for (int i = 0; i < dimOverall; i++) {
+		std::vector<std::complex<double>> subVec;
+		subVec.resize(dimOverall);
+		output[i] = subVec;
+	}
+	for (int i = 0; i < std::pow(2, leftOver); i++) {
+		output[2 * i][2 * i] = gate->fetchValue(0,0);
+		output[2 * i][2 * i + 1] = gate->fetchValue(0, 1);
+		output[2 * i + 1][2 * i] = gate->fetchValue(1, 0);
+		output[2 * i + 1][2 * i + 1] = gate->fetchValue(1, 1);
+	}
+	return output;
+}
+
 void CPUQuantumProcessor::loadCircuit(AbstractQuantumCircuit* circuit)
 {
 	circuit_ = circuit;
@@ -147,8 +207,7 @@ void CPUQuantumProcessor::calculate()
 	while (!circuit_->checkComplete()) {
 		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
 		for (auto calc : calcBlock) {	// parallelisation next iteration
-			Gate* gate = calc.getGate();
-			std::vector<SVPair> newOrder = calc.getNewOrder(circuit_->getStateVector()->getOrder());
+			Gate* gate = calc.getGate();			
 			int m = gate->getM();
 			int n = gate->getN();
 			int qubitN = m / 2;
@@ -158,6 +217,7 @@ void CPUQuantumProcessor::calculate()
 			if (m == 2) {
 				qubitValsBefore_.push_back(*qubits[0]->fetch(0));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(1));
+				std::vector<std::vector<std::complex<double>>> gateP = getGenericUResult(gate, circuit_->getStateVector()->getN());
 			}
 			else {
 				// Perform tensor product
@@ -165,6 +225,7 @@ void CPUQuantumProcessor::calculate()
 				qubitValsBefore_.push_back(*qubits[0]->fetch(0) * *qubits[1]->fetch(1));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(1) * *qubits[1]->fetch(0));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(1) * *qubits[1]->fetch(1));
+				std::vector<std::vector<std::complex<double>>> gateP = getCXResult(circuit_->getStateVector()->getN());
 			}
 			for (int i = 0; i < m; i++) {
 				std::complex<double> val = 0;

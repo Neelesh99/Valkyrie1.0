@@ -57,6 +57,8 @@ class CPUQuantumProcessor : public AbstractQuantumProcessor {
 private:
 	DeviceType type_;
 	AbstractQuantumCircuit* circuit_;
+	std::vector<std::vector<std::complex<double>>> getCXResult(int n);
+	std::vector<std::vector<std::complex<double>>> getGenericUResult(Gate* gate, int n);
 public:
 	CPUQuantumProcessor() {
 		type_ = CPU_;
