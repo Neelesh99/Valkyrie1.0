@@ -1,5 +1,6 @@
 #include "Measurement.h"
 #include <random>
+#include <ctime>
 
 bool MeasurementCalculator::selectState0(Qubit* val)
 {
@@ -110,7 +111,9 @@ StateVectorMeasurement::StateVectorMeasurement(StateVector* sv, std::vector<Regi
 void StateVectorMeasurement::measure()
 {
 	double totalMag =  getTotalMagnitude();
-	double measurement = ((double)std::rand() / (RAND_MAX)) * (totalMag);
+	std::srand(std::time(nullptr));
+	int randomVal = std::rand() % 100;
+	double measurement = ((double)randomVal / 100) * (totalMag);
 	int state = 0;
 	if (sv_->getState().size() == 0) {
 		return;
