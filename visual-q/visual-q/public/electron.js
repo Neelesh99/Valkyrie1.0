@@ -78,13 +78,23 @@ app.on("activate", () => {
 
 
 
-async function runValkyrie(){
-    try {
-        const { stdout, stderr } = await exec('Debug\\Valkyrie2.0.exe -c -o "output.qasm" -sv');
-        return stdout;
-      } catch (e) {
-        console.error(e); // should contain code (exit code) and signal (that caused the termination).
-      }
+async function runValkyrie(gpuMode){
+    if(gpuMode){
+        try {
+            const { stdout, stderr } = await exec('Debug\\Valkyrie2.0.exe -g -o "output.qasm" -sv -json');
+            return stdout;
+          } catch (e) {
+            console.error(e); // should contain code (exit code) and signal (that caused the termination).
+          }
+    } else{
+        try {
+            const { stdout, stderr } = await exec('Debug\\Valkyrie2.0.exe -c -o "output.qasm" -sv -json');
+            return stdout;
+          } catch (e) {
+            console.error(e); // should contain code (exit code) and signal (that caused the termination).
+          }
+    }
+    
 }
 
 ipcMain.on("sendFile", async (event, arg) => {
@@ -92,7 +102,7 @@ ipcMain.on("sendFile", async (event, arg) => {
         if (err) return console.log(err);
     });
     try {
-        var result = await runValkyrie();
+        var result = await runValkyrie(arg[2] === "g");
         event.returnValue = result;
     } catch (e){
         console.error("Valkyrie run failed");

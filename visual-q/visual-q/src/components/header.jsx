@@ -10,7 +10,7 @@ class Header extends React.Component{
             </div>
             <div class="poppin">
                 Powered by Valkyrie
-            </div>           
+            </div>    
             
         </div>)       
     }

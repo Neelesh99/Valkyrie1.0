@@ -161,3 +161,13 @@ void StateVectorMeasurement::printClassicalRegisters()
 		}
 	}
 }
+
+std::vector<Register> StateVectorMeasurement::getAllRegisters()
+{
+	return allRegisters_;
+}
+
+StateVector* StateVectorMeasurement::getStateVector()
+{
+	return sv_;
+}

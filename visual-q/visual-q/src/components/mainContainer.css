@@ -7,10 +7,26 @@
 }
 
 .mainContent{
+    position: relative;
+    z-index: 0;
+    top: 120px;
     padding: 1px;
     padding-left: 40px;
     padding-right: 40px;
-    background: #ccccf1; 
+    background: #b2caee; 
+    color: rgb(0, 0, 0);
+    flex-grow: 1;
+    font-family: 'Poppins', sans-serif;  
+}
+
+.mainContent-gpu{
+    position: relative;
+    z-index: 0;
+    top: 120px;
+    padding: 1px;
+    padding-left: 40px;
+    padding-right: 40px;
+    background: #d9f7de; 
     color: rgb(0, 0, 0);
     flex-grow: 1;
     font-family: 'Poppins', sans-serif;  

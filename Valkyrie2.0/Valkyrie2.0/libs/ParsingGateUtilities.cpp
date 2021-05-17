@@ -1,4 +1,5 @@
 #include "ParsingGateUtilities.h"
+#include <functional>
 
 const double PI = 3.1415926535;
 
@@ -807,4 +808,10 @@ std::vector<GateRequest> compileCompoundGateRequest(std::string gateType, std::v
         return std::vector<GateRequest>();
     }
     return std::vector<GateRequest>();
+}
+
+std::function <std::vector<GateRequest>()> fracture() {
+    std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> deltaFunc = [](std::vector<double> params, idLocationPairs idLoc) {
+        return std::vector<GateRequest>();
+    };
 }

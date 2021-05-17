@@ -56,4 +56,6 @@ public:
 	void loadMeasureCommands(std::vector<MeasureCommand> commands);
 	void passMeasurementsIntoClassicalRegisters();
 	void printClassicalRegisters();
+	std::vector<Register> getAllRegisters();
+	StateVector* getStateVector();
 };

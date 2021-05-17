@@ -99,6 +99,7 @@
     <ClInclude Include="libs\GateUtilitiesGPU.cuh" />
     <ClInclude Include="libs\GPUCompute.cuh" />
     <ClInclude Include="libs\GPUDevice.cuh" />
+    <ClInclude Include="libs\JSONify.h" />
     <ClInclude Include="libs\Measurement.h" />
     <ClInclude Include="libs\ParsingGateUtilities.h" />
     <ClInclude Include="libs\qasm2BaseVisitor.h" />
@@ -116,6 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="libs\CPUDevice.cpp" />
+    <ClCompile Include="libs\JSONify.cpp" />
     <ClCompile Include="libs\Measurement.cpp" />
     <ClCompile Include="libs\ParsingGateUtilities.cpp" />
     <ClCompile Include="libs\qasm2BaseVisitor.cpp" />

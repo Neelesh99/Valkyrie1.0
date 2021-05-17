@@ -1,9 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap');
 .header {
+    position: fixed;
     padding: 1px;
     padding-left: 40px;
-    background: #000046; 
+    background: #000046;
+    width: 100%;
+    height: 120px; 
     color: white;
+    z-index: 1;
   }
   .title-x{
     font-size: 60px;
