@@ -3,6 +3,8 @@ const path = require("path");
 const { app, BrowserWindow, ipcMain } = require("electron");
 const isDev = require("electron-is-dev");
 const fs = require('fs');
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 let installExtension, REACT_DEVELOPER_TOOLS; // NEW!
 
@@ -20,8 +22,8 @@ if (require("electron-squirrel-startup")) {
 function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1080,
+    height: 800,
     webPreferences: {
       nodeIntegration: true
     }
@@ -74,10 +76,26 @@ app.on("activate", () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 
+
+
+async function runValkyrie(){
+    try {
+        const { stdout, stderr } = await exec('Debug\\Valkyrie2.0.exe -c -o "output.qasm" -sv');
+        return stdout;
+      } catch (e) {
+        console.error(e); // should contain code (exit code) and signal (that caused the termination).
+      }
+}
+
 ipcMain.on("sendFile", async (event, arg) => {
     fs.writeFile(arg[0], arg[1], function (err) {
         if (err) return console.log(err);
-        console.log('Hello World > helloworld.txt');
     });
-    event.returnValue = "hello";
+    try {
+        var result = await runValkyrie();
+        event.returnValue = result;
+    } catch (e){
+        console.error("Valkyrie run failed");
+        event.returnValue = "Valkyrie run failed";
+    }
 })
