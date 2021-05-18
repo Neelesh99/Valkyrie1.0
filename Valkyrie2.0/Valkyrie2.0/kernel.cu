@@ -10,6 +10,7 @@
 #include "libs/CPUDevice.h"
 #include "libs/GPUDevice.cuh"
 #include "libs/Measurement.h"
+#include "libs/JSONify.h"
 #include <Windows.h>
 #include <string>
 #include <fstream>
@@ -33,10 +34,11 @@ void DisplayHeader();
 void printHelp();
 DeviceType resolveDeviceType(std::vector<std::string> arguments);
 std::string fetchFileName(std::vector<std::string> arguments);
-void CPURun(std::string filename, bool SV);
-void GPURun(std::string filename, bool SV);
+void CPURun(std::string filename, bool SV, bool jsonMode);
+void GPURun(std::string filename, bool SV, bool jsonMode);
 void handleInfoRequest(std::vector<std::string> arguments);
 bool resolveComputeMode(std::vector<std::string> arguments);
+bool resolveJsonPrint(std::vector<std::string> arguments);
 
 
 __global__ void addKernel(int *c, const int *a, const int *b)
@@ -152,11 +154,12 @@ int main(int argc, char *argv[])
         return 1;
     }
     bool svMode = resolveComputeMode(arguments);
+    bool jsonMode = resolveJsonPrint(arguments);
     if (type == CPU_) {
-        CPURun(fileName, svMode);
+        CPURun(fileName, svMode, jsonMode);
     }
     else {
-        GPURun(fileName, svMode);
+        GPURun(fileName, svMode, jsonMode);
     }
 
     
@@ -310,6 +313,15 @@ bool resolveComputeMode(std::vector<std::string> arguments) {
     return false;
 }
 
+bool resolveJsonPrint(std::vector<std::string> arguments) {
+    for (std::string argument : arguments) {
+        if (argument == "-json") {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string fetchFileName(std::vector<std::string> arguments) {
     std::string returnVal = "INVALID";
     if (arguments.size() == 0) {
@@ -323,7 +335,7 @@ std::string fetchFileName(std::vector<std::string> arguments) {
     return returnVal;
 }
 
-void CPURun(std::string filename, bool SV) {
+void CPURun(std::string filename, bool SV, bool jsonMode) {
     std::ifstream stream;
     stream.open(filename);
     if (!stream.is_open()) {
@@ -357,10 +369,16 @@ void CPURun(std::string filename, bool SV) {
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
     measure.passMeasurementsIntoClassicalRegisters();
-    measure.printClassicalRegisters();
+    if (!jsonMode) {
+        measure.printClassicalRegisters();
+    }
+    else {
+        JSONify json = JSONify(measure.getAllRegisters(), device.getStateVector());
+        json.printJSON();
+    }
 }
 
-void GPURun(std::string filename, bool SV) {
+void GPURun(std::string filename, bool SV, bool jsonMode) {
     std::ifstream stream;
     stream.open(filename);
     if (!stream.is_open()) {
@@ -394,7 +412,13 @@ void GPURun(std::string filename, bool SV) {
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
     measure.passMeasurementsIntoClassicalRegisters();
-    measure.printClassicalRegisters();
+    if (!jsonMode) {
+        measure.printClassicalRegisters();
+    }
+    else {
+        JSONify json = JSONify(measure.getAllRegisters(), device.getStateVector());
+        json.printJSON();
+    }
 }
 
 void handleInfoRequest(std::vector<std::string> arguments)
