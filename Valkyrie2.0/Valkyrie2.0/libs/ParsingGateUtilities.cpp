@@ -870,7 +870,6 @@ struct gateCoupling {
     }
 };
 
-
 std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> compileCustomGateInternal(std::vector<std::string> gates, std::vector<std::vector<doubleOrArg>> paramsForGate, std::vector<std::vector<int>> locationsPerGate) {
     std::vector<gateCoupling> couplings;
     for (int i = 0; i < gates.size(); i++) {
