@@ -109,3 +109,8 @@ ipcMain.on("sendFile", async (event, arg) => {
         event.returnValue = "Valkyrie run failed";
     }
 })
+
+ipcMain.on("fetchLast", async (event, arg) => {
+  const returnVal = fs.readFileSync("output.qasm", 'utf-8');
+  event.returnValue = returnVal;
+})
