@@ -854,35 +854,33 @@ std::vector<int> findMinMax(std::vector<std::vector<int>> paramsForGate, std::ve
 
 struct gateCoupling {
     std::string gateName;
-    std::vector<int> paramLocations;
+    std::vector<doubleOrArg> paramLocations;
     std::vector<int> idLocations;
-    gateCoupling(std::string name, std::vector<int> param, std::vector<int> idLoc) {
+    gateCoupling(std::string name, std::vector<doubleOrArg> param, std::vector<int> idLoc) {
         gateName = name;
         paramLocations = param;
         idLocations = idLoc;
     }
 };
 
-std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> compileCustomGateInternal(std::vector<std::string> gates, std::vector<std::vector<int>> paramsForGate, std::vector<std::vector<int>> locationsPerGate) {
-    int paramMin, paramMax, locationMin, locationMax;
-    std::vector<int> minMaxes = findMinMax(paramsForGate, locationsPerGate);
-    paramMin = minMaxes[0];
-    paramMax = minMaxes[1];
-    locationMin = minMaxes[2];
-    locationMax = minMaxes[3];
+
+std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> compileCustomGateInternal(std::vector<std::string> gates, std::vector<std::vector<doubleOrArg>> paramsForGate, std::vector<std::vector<int>> locationsPerGate) {
     std::vector<gateCoupling> couplings;
     for (int i = 0; i < gates.size(); i++) {
         couplings.push_back(gateCoupling(gates[i], paramsForGate[i], locationsPerGate[i]));
     }
-    std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> deltaFunc = [paramMax, locationMax, couplings](std::vector<double> params, idLocationPairs idLoc) {
-        if (idLoc.getSize() < locationMax + 1) {
-            return std::vector<GateRequest>();
-        }
+    std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> deltaFunc = [couplings](std::vector<double> params, idLocationPairs idLoc) {
         std::vector<GateRequest> requests;
         for (auto coupling : couplings) {
             std::vector<double> localParams;
             for (int i = 0; i < coupling.paramLocations.size(); i++) {
-                localParams.push_back(coupling.paramLocations[i]);
+                doubleOrArg da = coupling.paramLocations[i];
+                if (da.doubleNotArg) {
+                    localParams.push_back(da.valD);
+                }
+                else {
+                    localParams.push_back(params[da.position]);
+                }
             }
             idLocationPairs localPairs;
             for (int i = 0; i < coupling.idLocations.size(); i++) {
@@ -912,13 +910,23 @@ std::function<std::vector<GateRequest>(std::vector<double>params, idLocationPair
         idLocToLocation[idLocs[i]] = i;
     }
     std::vector<std::string> gates;
-    std::vector<std::vector<int>> paramLocs;
+    std::vector<std::vector<doubleOrArg>> paramLocs;
     std::vector<std::vector<int>> idLocsI;
     for (auto gop : gateOperations) {
         gates.push_back(gop.gateName);
-        std::vector<int> parmsLocal;
+        std::vector<doubleOrArg> parmsLocal;
         for (int i = 0; i < gop.params.size(); i++) {
-            parmsLocal.push_back(paramToLocation[gop.params[i]]);
+            if (gop.params[i].identNotVal) {
+                doubleOrArg arg;
+                arg.doubleNotArg = false;
+                arg.position = paramToLocation[gop.params[i].ident];
+                parmsLocal.push_back(arg);
+            } else{
+                doubleOrArg doub;
+                doub.doubleNotArg = true;
+                doub.valD = gop.params[i].value;
+                parmsLocal.push_back(doub);
+            }
         }
         std::vector<int> idLocal;
         for (int i = 0; i < gop.idLocs.size(); i++) {

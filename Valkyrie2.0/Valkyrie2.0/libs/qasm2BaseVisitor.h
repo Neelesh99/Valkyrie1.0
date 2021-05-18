@@ -237,12 +237,19 @@ public:
           }
           if (ctx->ID()) {
               std::string uopGate = ctx->ID()->getText();
+              bool customGate = customGates_.find(uopGate) != customGates_.end();
               if (ctx->explist()) {
                   std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
                   if (ctx->anylist()) {
                       if (ctx->anylist()->mixedlist()) {
                           idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, idLoc);
+                          std::vector<GateRequest> gates;
+                          if (customGate) {
+                              gates = customGates_[uopGate](gateArguments, idLoc);
+                          }
+                          else {
+                              gates = compileCompoundGateRequest(uopGate, gateArguments, idLoc);
+                          }                          
                           attachGates(gates);
                       }
                       else {
@@ -254,17 +261,30 @@ public:
                                   pairs.identifiers.push_back(identifier);
                                   pairs.locations.push_back(i);
                               }
-                              std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, pairs);
+                              std::vector<GateRequest> gates;
+                              if (customGate) {
+                                  gates = customGates_[uopGate](gateArguments, pairs);
+                              }
+                              else {
+                                  gates = compileCompoundGateRequest(uopGate, gateArguments, pairs);
+                              }
                               attachGates(gates);
                           }
                       }
                   }
               }
               else {
+                  bool customGate = customGates_.find(uopGate) != customGates_.end();
                   if (ctx->anylist()) {
                       if (ctx->anylist()->mixedlist()) {
                           idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, idLoc);
+                          std::vector<GateRequest> gates;
+                          if (customGate) {
+                              gates = customGates_[uopGate](std::vector<double>(), idLoc);
+                          }
+                          else {
+                              gates = compileCompoundGateRequest(uopGate, idLoc);
+                          }                 
                           attachGates(gates);
                       }
                   }
@@ -277,7 +297,13 @@ public:
                               pairs.identifiers.push_back(identifier);
                               pairs.locations.push_back(i);
                           }
-                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, pairs);
+                          std::vector<GateRequest> gates;
+                          if (customGate) {
+                              gates = customGates_[uopGate](std::vector<double>(), pairs);
+                          }
+                          else {
+                              gates = compileCompoundGateRequest(uopGate, pairs);
+                          }
                           attachGates(gates);
                       }
                   }
@@ -295,9 +321,9 @@ public:
           else {
               gOP.gateName = ctx->ID()->getText();
           }
-          std::vector<std::string> paramList;
+          std::vector<expEval> paramList;
           if (ctx->explist()) {
-              paramList = visitExplist(ctx->explist()).as<std::vector<std::string>>();
+              paramList = visitExplist(ctx->explist()).as<std::vector<expEval>>();
           }
           gOP.params = paramList;
           if (ctx->argument().size() > 0) {
@@ -311,7 +337,9 @@ public:
               gOP.idLocs = pairs.identifiers;
           }
           else {
-              gOP.idLocs = visitAnylist(ctx->anylist()).as<std::vector<std::string>>();
+              if (ctx->anylist()->idlist()) {
+                  gOP.idLocs = visitIdlist(ctx->anylist()->idlist()).as<std::vector<std::string>>();
+              }              
           }
           return gOP;
       }    
@@ -424,9 +452,9 @@ public:
           return values;
       }
       else {
-          std::vector<std::string> values;
+          std::vector<expEval> values;
           for (auto exp : ctx->exp()) {
-              std::string value = visitExp(exp).as<std::string>();
+              expEval value = visitExp(exp).as<expEval>();
               values.push_back(value);
           }
           return values;
@@ -439,6 +467,12 @@ public:
               std::vector<qasm2Parser::ExpContext*> subexpressions = ctx->exp();
               if (subexpressions.size() == 0) {
                   if (ctx->getStart()->getText() == "pi") {
+                      if (gateDeclMode) {
+                          expEval exp;
+                          exp.identNotVal = false;
+                          exp.value = PI;
+                          return exp;
+                      }
                       return PI;
                   }
                   double value = 0;
@@ -449,6 +483,12 @@ public:
                   else if (ctx->INT()) {
                       std::string unparsed = ctx->INT()->getText();
                       value = std::stod(unparsed);
+                  }
+                  if (gateDeclMode) {
+                      expEval exp;
+                      exp.identNotVal = false;
+                      exp.value = value;
+                      return exp;
                   }
                   return value;
               }
@@ -478,7 +518,10 @@ public:
           }
       }
       if (ctx->ID()) {
-          return ctx->ID()->getText();
+          expEval val;
+          val.identNotVal = true;
+          val.ident = ctx->ID()->getText();
+          return val;
       }
       if (ctx->unaryop()) {
           double expressionVal = visitExp(ctx->exp()[0]);

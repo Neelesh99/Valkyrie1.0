@@ -25,6 +25,20 @@ struct SVPair {
 	}
 };
 
+struct expEval {
+	std::string ident;
+	double value;
+	bool identNotVal;
+};
+
+
+struct doubleOrArg {
+	bool doubleNotArg;
+	double valD;
+	int position;
+};
+
+
 struct gateDeclaration {
 	std::string gateName;
 	std::vector<std::string> idLocList;
@@ -33,9 +47,11 @@ struct gateDeclaration {
 
 struct gateOp {
 	std::string gateName;
-	std::vector<std::string> params;
+	std::vector<expEval> params;
 	std::vector<std::string> idLocs;
 };
+
+
 
 enum DeviceType {
 	CPU_,
