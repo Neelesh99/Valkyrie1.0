@@ -657,6 +657,8 @@ std::vector<GateRequest> compileCompoundGateRequest(std::string gateType, idLoca
 {
     GateRequestType gtType = getGateTypeM(gateType);
     switch (gtType) {
+    case CX:
+        return compileCXGate(idLoc);
     case cx:
         return compileCXGate(idLoc);
     case id:
@@ -714,6 +716,11 @@ std::vector<GateRequest> compileCompoundGateRequest(std::string gateType, std::v
 {
     GateRequestType gtType = getGateTypeM(gateType);
     switch (gtType) {
+    case U:
+        if (params.size() == 3) {
+            return compileU3Gate(params[0], params[1], params[2], idLoc);
+        }
+        break;
     case u3:
         if (params.size() == 3) {
             return compileU3Gate(params[0], params[1], params[2], idLoc);

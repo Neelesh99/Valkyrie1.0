@@ -7,5 +7,5 @@ qreg q[3];
 creg c[3];
 h q[2];
 cx q[0], q[1];
-xB q[0];
+fup(pi,0,pi) q[0];
 measure q -> c;
