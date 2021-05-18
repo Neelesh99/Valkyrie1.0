@@ -17,6 +17,11 @@ async function sendFile(val){
     return res;
 }
 
+async function getLastFile(){
+    const res = await ipcRenderer.sendSync('fetchLast', 0);
+    return res;
+}
+
 class MainContainer extends React.Component{
 
     constructor(props){
@@ -28,8 +33,23 @@ class MainContainer extends React.Component{
         this.handleExecutionModeSwitch = this.handleExecutionModeSwitch.bind(this);
         this.getButtonVariant = this.getButtonVariant.bind(this);
         this.getBackGround = this.getBackGround.bind(this);
+        this.handleFirstMount = this.handleFirstMount.bind(this);
     }
-    
+
+    componentDidMount(){
+        this.handleFirstMount();
+    }
+
+    async handleFirstMount(){
+        try {
+            var res = await getLastFile();
+            console.log(res);
+            this.setState({value: res, result: this.state.result, execMode: this.state.execMode});
+        } catch(e){
+            console.log("Error opening last saved output.qasm");
+        }
+    }
+
     async handleSubmit(event){
         const fileName = "output.qasm";
         console.log(this.state.execMode);
@@ -91,7 +111,7 @@ class MainContainer extends React.Component{
                             as="textarea"
                             rows={10}
                             placeholder="OPENQASM 2.0;"
-                            defaultValue="OPENQASM 2.0;"
+                            defaultValue={this.state.value}
                             onChange={this.handleChange}
                         />
                     </Form.Group>
