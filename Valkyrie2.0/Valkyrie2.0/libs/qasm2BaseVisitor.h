@@ -9,6 +9,7 @@
 #include "BaseTypes.h"
 #include <cmath>
 #include "ParsingGateUtilities.h"
+#include <map>
 
 
 
@@ -25,6 +26,8 @@ enum unaryOp {
 };
 
 
+
+
 /**
  * This class provides an empty implementation of qasm2Visitor, which can be
  * extended to create a visitor which only needs to handle a subset of the available methods.
@@ -34,8 +37,9 @@ private:
     int debugLevel = 1;
     std::vector<Register> registers_;
     std::vector<GateRequest> gates_;
-    std::vector<GateRequest> customGates_;
     std::vector<MeasureCommand> commands_;
+    std::map<std::string, std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)>> customGates_;
+    bool gateDeclMode = false;
 
     int findRegWidth(std::string identifier) {
         for (auto register_ : registers_) {
@@ -106,6 +110,14 @@ public:
       else if (ctx->qop()) {
           
       }
+      else if (ctx->gatedecl() && ctx->goplist()) {
+          gateDeclMode = true;
+          gateDeclaration gDecl = visitGatedecl(ctx->gatedecl()).as<gateDeclaration>();
+          std::vector<gateOp> gateOps = visitGoplist(ctx->goplist()).as<std::vector<gateOp>>();
+          gateDeclMode = false;
+          customGates_[gDecl.gateName] = compileCustomGate(gDecl, gateOps);
+          return 1;
+      }
       else {
           return 1;
       }
@@ -141,12 +153,36 @@ public:
       return 1;
   }
 
-  virtual antlrcpp::Any visitGatedecl(qasm2Parser::GatedeclContext *ctx) override {         // Incomplete
+  virtual antlrcpp::Any visitGatedecl(qasm2Parser::GatedeclContext *ctx) override {
+      if (ctx->idlist().size() == 1) {          
+          std::vector<std::string> idLocNames = visitIdlist(ctx->idlist()[0]);
+          gateDeclaration gDecl;
+          gDecl.gateName = ctx->ID()->getText();
+          gDecl.idLocList = idLocNames;
+          return gDecl;
+      }
+      else {
+          std::vector<std::string> idLocNames = visitIdlist(ctx->idlist()[1]);
+          std::vector<std::string> paramNames = visitIdlist(ctx->idlist()[0]);
+          gateDeclaration gDecl;
+          gDecl.gateName = ctx->ID()->getText();
+          gDecl.idLocList = idLocNames;
+          gDecl.paramList = paramNames;
+          return gDecl;
+      }
     return visitChildren(ctx);
   }
 
   virtual antlrcpp::Any visitGoplist(qasm2Parser::GoplistContext *ctx) override {           // Incomplete
-    return visitChildren(ctx);
+      if (ctx->uop().size() > 0) {
+          std::vector<gateOp> gateOperations;
+          for (auto uop : ctx->uop()) {
+              gateOp gop = visitUop(uop).as<gateOp>();
+              gateOperations.push_back(gop);
+          }
+          return gateOperations;
+      }
+      return 1;
   }
 
   virtual antlrcpp::Any visitQop(qasm2Parser::QopContext *ctx) override {   
@@ -168,45 +204,69 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual antlrcpp::Any visitUop(qasm2Parser::UopContext *ctx) override {                   // Complete
-      if (ctx->getStart()->getText() == "U") {
-          if (ctx->explist()) {
-              std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
-              if (gateArguments.size() == 3) {
-                  idLocationPairs pairs = visitArgument(ctx->argument()[0]);
-                  if (pairs.identifiers.size() == 1) {
-                      GateRequest gate = compileGateRequest("U", gateArguments, pairs);
-                      gates_.push_back(gate);
+  virtual antlrcpp::Any visitUop(qasm2Parser::UopContext *ctx) override {
+      if (!gateDeclMode) {
+          if (ctx->getStart()->getText() == "U") {
+              if (ctx->explist()) {
+                  std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
+                  if (gateArguments.size() == 3) {
+                      idLocationPairs pairs = visitArgument(ctx->argument()[0]);
+                      if (pairs.identifiers.size() == 1) {
+                          GateRequest gate = compileGateRequest("U", gateArguments, pairs);
+                          gates_.push_back(gate);
+                      }
                   }
               }
           }
-      }
-      if (ctx->getStart()->getText() == "CX") {
-        idLocationPairs pairs1 = visitArgument(ctx->argument()[0]).as<idLocationPairs>();
-        idLocationPairs pairs2 = visitArgument(ctx->argument()[1]).as<idLocationPairs>();
-        idLocationPairs combinedPairs;
-        for (int i = 0; i < pairs1.identifiers.size(); i++) {
-            combinedPairs.identifiers.push_back(pairs1.identifiers[i]);
-            combinedPairs.locations.push_back(pairs1.locations[i]);
-        }
-        for (int i = 0; i < pairs2.identifiers.size(); i++) {
-            combinedPairs.identifiers.push_back(pairs2.identifiers[i]);
-            combinedPairs.locations.push_back(pairs2.locations[i]);
-        }
-        if (combinedPairs.identifiers.size() == 2) {
-            GateRequest gate = compileGateRequest("CX", combinedPairs);
-            gates_.push_back(gate);
-        }
-      }
-      if (ctx->ID()) {
-          std::string uopGate = ctx->ID()->getText();
-          if (ctx->explist()) {
-              std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
-              if (ctx->anylist()) {
-                  if (ctx->anylist()->mixedlist()) {
-                      idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, idLoc);
-                      attachGates(gates);
+          if (ctx->getStart()->getText() == "CX") {
+              idLocationPairs pairs1 = visitArgument(ctx->argument()[0]).as<idLocationPairs>();
+              idLocationPairs pairs2 = visitArgument(ctx->argument()[1]).as<idLocationPairs>();
+              idLocationPairs combinedPairs;
+              for (int i = 0; i < pairs1.identifiers.size(); i++) {
+                  combinedPairs.identifiers.push_back(pairs1.identifiers[i]);
+                  combinedPairs.locations.push_back(pairs1.locations[i]);
+              }
+              for (int i = 0; i < pairs2.identifiers.size(); i++) {
+                  combinedPairs.identifiers.push_back(pairs2.identifiers[i]);
+                  combinedPairs.locations.push_back(pairs2.locations[i]);
+              }
+              if (combinedPairs.identifiers.size() == 2) {
+                  GateRequest gate = compileGateRequest("CX", combinedPairs);
+                  gates_.push_back(gate);
+              }
+          }
+          if (ctx->ID()) {
+              std::string uopGate = ctx->ID()->getText();
+              if (ctx->explist()) {
+                  std::vector<double> gateArguments = visitExplist(ctx->explist()).as<std::vector<double>>();
+                  if (ctx->anylist()) {
+                      if (ctx->anylist()->mixedlist()) {
+                          idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
+                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, idLoc);
+                          attachGates(gates);
+                      }
+                      else {
+                          std::vector<std::string> identifiers = visitIdlist(ctx->anylist()->idlist()).as<std::vector<std::string>>();
+                          for (auto identifier : identifiers) {
+                              int width = findRegWidth(identifier);
+                              idLocationPairs pairs;
+                              for (int i = 0; i < width; i++) {
+                                  pairs.identifiers.push_back(identifier);
+                                  pairs.locations.push_back(i);
+                              }
+                              std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, pairs);
+                              attachGates(gates);
+                          }
+                      }
+                  }
+              }
+              else {
+                  if (ctx->anylist()) {
+                      if (ctx->anylist()->mixedlist()) {
+                          idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
+                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, idLoc);
+                          attachGates(gates);
+                      }
                   }
                   else {
                       std::vector<std::string> identifiers = visitIdlist(ctx->anylist()->idlist()).as<std::vector<std::string>>();
@@ -217,35 +277,44 @@ public:
                               pairs.identifiers.push_back(identifier);
                               pairs.locations.push_back(i);
                           }
-                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, gateArguments, pairs);
+                          std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, pairs);
                           attachGates(gates);
                       }
                   }
               }
           }
-          else {
-              if (ctx->anylist()) {
-                  if (ctx->anylist()->mixedlist()) {
-                      idLocationPairs idLoc = visitMixedlist(ctx->anylist()->mixedlist()).as<idLocationPairs>();
-                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, idLoc);
-                      attachGates(gates);
-                  }
-              }
-              else {
-                  std::vector<std::string> identifiers = visitIdlist(ctx->anylist()->idlist()).as<std::vector<std::string>>();
-                  for (auto identifier : identifiers) {
-                      int width = findRegWidth(identifier);
-                      idLocationPairs pairs;
-                      for (int i = 0; i < width; i++) {
-                          pairs.identifiers.push_back(identifier);
-                          pairs.locations.push_back(i);
-                      }
-                      std::vector<GateRequest> gates = compileCompoundGateRequest(uopGate, pairs);
-                      attachGates(gates);
-                  }
-              }
-          }          
       }
+      else {
+          gateOp gOP;
+          if (ctx->getStart()->getText() == "U") {
+              gOP.gateName = "U";
+          }
+          else if (ctx->getStart()->getText() == "CX") {
+              gOP.gateName = "CX";
+          }
+          else {
+              gOP.gateName = ctx->ID()->getText();
+          }
+          std::vector<std::string> paramList;
+          if (ctx->explist()) {
+              paramList = visitExplist(ctx->explist()).as<std::vector<std::string>>();
+          }
+          gOP.params = paramList;
+          if (ctx->argument().size() > 0) {
+              idLocationPairs pairs = visitArgument(ctx->argument()[0]);
+              if (ctx->argument().size() == 2) {
+                  idLocationPairs pairs2 = visitArgument(ctx->argument()[1]);
+                  for (int i = 0; i < pairs2.identifiers.size(); i++) {
+                      pairs.identifiers.push_back(pairs2.identifiers[i]);
+                  }
+              }
+              gOP.idLocs = pairs.identifiers;
+          }
+          else {
+              gOP.idLocs = visitAnylist(ctx->anylist()).as<std::vector<std::string>>();
+          }
+          return gOP;
+      }    
 
     return 0;
   }
@@ -330,23 +399,38 @@ public:
           pairs.locations.push_back(std::stoi(ctx->INT()->getText()));
       }
       else {
-          std::string register_ = ctx->ID()->getText();
-          int width = findRegWidth(register_);
-          for (int i = 0; i < width; i++) {
-              pairs.identifiers.push_back(register_);
-              pairs.locations.push_back(i);
+          if (!gateDeclMode) {
+              std::string register_ = ctx->ID()->getText();
+              int width = findRegWidth(register_);
+              for (int i = 0; i < width; i++) {
+                  pairs.identifiers.push_back(register_);
+                  pairs.locations.push_back(i);
+              }
+          }
+          else {
+              pairs.identifiers.push_back(ctx->ID()->getText());
           }
       }
       return pairs;
   }
 
   virtual antlrcpp::Any visitExplist(qasm2Parser::ExplistContext *ctx) override {           // Complete
-      std::vector<double> values;
-      for (auto exp : ctx->exp()) {
-          double value = visitExp(exp);
-          values.push_back(value);
+      if (!gateDeclMode) {
+          std::vector<double> values;
+          for (auto exp : ctx->exp()) {
+              double value = visitExp(exp).as<double>();
+              values.push_back(value);
+          }
+          return values;
       }
-      return values;
+      else {
+          std::vector<std::string> values;
+          for (auto exp : ctx->exp()) {
+              std::string value = visitExp(exp).as<std::string>();
+              values.push_back(value);
+          }
+          return values;
+      }
   }
 
   virtual antlrcpp::Any visitExp(qasm2Parser::ExpContext *ctx) override {
@@ -393,9 +477,8 @@ public:
               }
           }
       }
-      if (ctx->ID()) { 
-          double k = 0;
-          return k;
+      if (ctx->ID()) {
+          return ctx->ID()->getText();
       }
       if (ctx->unaryop()) {
           double expressionVal = visitExp(ctx->exp()[0]);

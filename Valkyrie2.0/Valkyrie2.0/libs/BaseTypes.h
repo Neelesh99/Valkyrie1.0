@@ -25,6 +25,18 @@ struct SVPair {
 	}
 };
 
+struct gateDeclaration {
+	std::string gateName;
+	std::vector<std::string> idLocList;
+	std::vector<std::string> paramList;
+};
+
+struct gateOp {
+	std::string gateName;
+	std::vector<std::string> params;
+	std::vector<std::string> idLocs;
+};
+
 enum DeviceType {
 	CPU_,
 	GPU_,

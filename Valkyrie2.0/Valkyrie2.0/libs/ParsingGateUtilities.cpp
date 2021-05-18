@@ -810,8 +810,122 @@ std::vector<GateRequest> compileCompoundGateRequest(std::string gateType, std::v
     return std::vector<GateRequest>();
 }
 
-std::function <std::vector<GateRequest>()> fracture() {
-    std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> deltaFunc = [](std::vector<double> params, idLocationPairs idLoc) {
-        return std::vector<GateRequest>();
+int findMin(std::vector<int> values) {
+    int minSoFar = INT_MAX;
+    int loc = 0;
+    for (int i = 0; i < values.size(); i++) {
+        if (values[i] < minSoFar) {
+            minSoFar = values[i];
+            loc = i;
+        }
+    }
+    return loc;
+}
+
+int findMax(std::vector<int> values) {
+    int maxSoFar = 0;
+    int loc = 0;
+    for (int i = 0; i < values.size(); i++) {
+        if (values[i] > maxSoFar) {
+            maxSoFar = values[i];
+            loc = i;
+        }
+    }
+    return loc;
+}
+
+std::vector<int> findMinMax(std::vector<std::vector<int>> paramsForGate, std::vector<std::vector<int>> locationsPerGate) {
+    std::vector<int> minForParams, maxForParams, minForLocations, maxForLocations, result;
+    for (int i = 0; i < paramsForGate.size(); i++) {
+        minForParams.push_back(paramsForGate[i][findMin(paramsForGate[i])]);
+        maxForParams.push_back(paramsForGate[i][findMax(paramsForGate[i])]);
+    }
+    for (int i = 0; i < locationsPerGate.size(); i++) {
+        minForLocations.push_back(locationsPerGate[i][findMin(locationsPerGate[i])]);
+        maxForLocations.push_back(locationsPerGate[i][findMax(locationsPerGate[i])]);
+    }
+    if (paramsForGate.size() == 0) {
+        minForParams.push_back(0);
+        maxForParams.push_back(0);
+    }
+    result = { minForParams[findMin(minForParams)], maxForParams[findMax(maxForParams)], minForLocations[findMin(minForLocations)], maxForLocations[findMax(maxForLocations)]};
+    return result;
+}
+
+struct gateCoupling {
+    std::string gateName;
+    std::vector<int> paramLocations;
+    std::vector<int> idLocations;
+    gateCoupling(std::string name, std::vector<int> param, std::vector<int> idLoc) {
+        gateName = name;
+        paramLocations = param;
+        idLocations = idLoc;
+    }
+};
+
+std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> compileCustomGateInternal(std::vector<std::string> gates, std::vector<std::vector<int>> paramsForGate, std::vector<std::vector<int>> locationsPerGate) {
+    int paramMin, paramMax, locationMin, locationMax;
+    std::vector<int> minMaxes = findMinMax(paramsForGate, locationsPerGate);
+    paramMin = minMaxes[0];
+    paramMax = minMaxes[1];
+    locationMin = minMaxes[2];
+    locationMax = minMaxes[3];
+    std::vector<gateCoupling> couplings;
+    for (int i = 0; i < gates.size(); i++) {
+        couplings.push_back(gateCoupling(gates[i], paramsForGate[i], locationsPerGate[i]));
+    }
+    std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPairs idLoc)> deltaFunc = [paramMax, locationMax, couplings](std::vector<double> params, idLocationPairs idLoc) {
+        if (idLoc.getSize() < locationMax + 1) {
+            return std::vector<GateRequest>();
+        }
+        std::vector<GateRequest> requests;
+        for (auto coupling : couplings) {
+            std::vector<double> localParams;
+            for (int i = 0; i < coupling.paramLocations.size(); i++) {
+                localParams.push_back(coupling.paramLocations[i]);
+            }
+            idLocationPairs localPairs;
+            for (int i = 0; i < coupling.idLocations.size(); i++) {
+                localPairs = zipIDLoc(localPairs, fetchIDLoc(idLoc, coupling.idLocations[i]));
+            }
+            if (localParams.size() > 0) {
+                requests = attachGateRequests(requests, compileCompoundGateRequest(coupling.gateName, localParams, localPairs));
+            }
+            else {
+                requests = attachGateRequests(requests, compileCompoundGateRequest(coupling.gateName, localPairs));
+            }
+        }
+        return requests;
     };
+    return deltaFunc;
+}
+
+std::function<std::vector<GateRequest>(std::vector<double>params, idLocationPairs idLoc)> compileCustomGate(gateDeclaration decl, std::vector<gateOp> gateOperations)
+{
+    std::map<std::string, int> paramToLocation, idLocToLocation;
+    std::vector<std::string> params = decl.paramList;
+    for (int i = 0; i < params.size(); i++) {
+        paramToLocation[params[i]] = i;
+    }
+    std::vector<std::string> idLocs = decl.idLocList;
+    for (int i = 0; i < idLocs.size(); i++) {
+        idLocToLocation[idLocs[i]] = i;
+    }
+    std::vector<std::string> gates;
+    std::vector<std::vector<int>> paramLocs;
+    std::vector<std::vector<int>> idLocsI;
+    for (auto gop : gateOperations) {
+        gates.push_back(gop.gateName);
+        std::vector<int> parmsLocal;
+        for (int i = 0; i < gop.params.size(); i++) {
+            parmsLocal.push_back(paramToLocation[gop.params[i]]);
+        }
+        std::vector<int> idLocal;
+        for (int i = 0; i < gop.idLocs.size(); i++) {
+            idLocal.push_back(idLocToLocation[gop.idLocs[i]]);
+        }
+        paramLocs.push_back(parmsLocal);
+        idLocsI.push_back(idLocal);
+    }
+    return compileCustomGateInternal(gates, paramLocs, idLocsI);
 }
