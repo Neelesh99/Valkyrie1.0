@@ -17,8 +17,21 @@ namespace ValkGPULib {
 	__global__ void svMatrixMul(cuDoubleComplex* output, const cuDoubleComplex* input, const cuDoubleComplex* gate, int m){
 		int loc = blockIdx.x * blockDim.x + threadIdx.x;
 		output[loc] = make_cuDoubleComplex(0, 0);
-		for (int i = 0; i < m; i++) {
+		for (int i = 0; i < m; i++) {			
 			output[loc] = cuCadd(cuCmul(input[i], gate[m * loc + i]), output[loc]);
+		}
+	}
+
+	__global__ void svMatrixUltraMul(cuDoubleComplex* output, const cuDoubleComplex* input, const cuDoubleComplex* gate, int m) {
+		int loc = blockIdx.x * blockDim.x + threadIdx.x;
+		output[loc] = cuCmul(input[loc % m], gate[loc]);
+	}
+
+	__global__ void svAddLargeScale(cuDoubleComplex* output, cuDoubleComplex* input, int m) {
+		int loc = threadIdx.x;
+		output[loc] = make_cuDoubleComplex(0, 0);
+		for (int i = 0; i < m; i++) {
+			output[loc] = cuCadd(output[loc], input[m * loc + i]);
 		}
 	}
 
@@ -180,6 +193,91 @@ namespace ValkGPULib {
 
 	/// State Vector compute mode ///
 
+	std::vector<std::complex<double>> calculateGPULargeSV(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, StateVector* reordered, std::vector<std::vector<std::complex<double>>> gateValuesV) {
+		int arraySize = gateValuesV.size();
+		cuDoubleComplex* before = new cuDoubleComplex[arraySize];
+		cuDoubleComplex* gateVal = new cuDoubleComplex[arraySize * arraySize];
+		cuDoubleComplex* after = new cuDoubleComplex[arraySize];
+
+		std::vector<std::complex<double>> currentState = reordered->getState();
+		for (int i = 0; i < currentState.size(); i++) {
+			before[i] = convertQubitComplex(currentState[i]);
+		}
+		for (int i = 0; i < arraySize; i++) {
+			for (int j = 0; j < arraySize; j++) {
+				gateVal[i * arraySize + j] = convertQubitComplex(gateValuesV[i][j]);
+			}
+		}
+		// Copy input vectors into CUDA memory
+		cudaError_t cudaStatus;
+		cudaStatus = cudaMemcpy(beforeGate, before, arraySize * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "cudaMemcpy failed!");
+			return std::vector<std::complex<double>>();
+		}
+		cudaStatus = cudaMemcpy(gateValues, gateVal, (arraySize * arraySize) * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "cudaMemcpy failed!");
+			return std::vector<std::complex<double>>();
+		}
+		cudaStatus = cudaMemcpy(afterGate, after, arraySize * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "cudaMemcpy failed!");
+			return std::vector<std::complex<double>>();
+		}
+		cuDoubleComplex* tempOutput;
+		cudaStatus = cudaMalloc((void**)&tempOutput, arraySize*arraySize* sizeof(cuDoubleComplex));
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "cudaMalloc failed!");
+			return std::vector<std::complex<double>>();
+		}
+		int blockSize = 256;
+		int numBlocks = (arraySize*arraySize + blockSize - 1) / blockSize;
+		ValkGPULib::svMatrixUltraMul << <numBlocks, blockSize >> > (tempOutput, beforeGate, gateValues, arraySize);
+		// Check for any errors launching the kernel
+		cudaStatus = cudaGetLastError();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+			return std::vector<std::complex<double>>();
+		}
+
+		// cudaDeviceSynchronize waits for the kernel to finish, and returns
+		// any errors encountered during the launch.
+		cudaStatus = cudaDeviceSynchronize();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+			return std::vector<std::complex<double>>();
+		}
+		ValkGPULib::svAddLargeScale << <1, arraySize >> > (afterGate, tempOutput, arraySize);
+		// Check for any errors launching the kernel
+		cudaStatus = cudaGetLastError();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+			return std::vector<std::complex<double>>();
+		}
+
+		// cudaDeviceSynchronize waits for the kernel to finish, and returns
+		// any errors encountered during the launch.
+		cudaStatus = cudaDeviceSynchronize();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
+			return std::vector<std::complex<double>>();
+		}
+
+		// Copy output vector from GPU buffer to host memory.
+		cudaStatus = cudaMemcpy(after, afterGate, arraySize * sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "cudaMemcpy failed!");
+			return std::vector<std::complex<double>>();
+		}
+		cudaFree(tempOutput);
+		std::vector<std::complex<double>> output;
+		for (int i = 0; i < arraySize; i++) {
+			output.push_back(convertComplexQubit(after[i]));
+		}
+		return output;
+	}
+
 	std::vector<std::complex<double>> calculateGPUSV(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, StateVector* reordered, std::vector<std::vector<std::complex<double>>> gateValuesV) {
 		int arraySize = gateValuesV.size();
 		cuDoubleComplex* before = new cuDoubleComplex[arraySize];
@@ -214,7 +312,7 @@ namespace ValkGPULib {
 		}
 		if (arraySize > 256) {
 			int blockSize = 256;
-			int numBlocks = (arraySize * arraySize + blockSize - 1) / blockSize;
+			int numBlocks = (arraySize + blockSize - 1) / blockSize;
 			ValkGPULib::svMatrixMul << <numBlocks, blockSize >> > (afterGate, beforeGate, gateValues, arraySize);
 		}
 		else {

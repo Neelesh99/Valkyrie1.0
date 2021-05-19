@@ -301,7 +301,14 @@ void GPUQuantumProcessor::calculateWithStateVector()
 				fprintf(stderr, "cudaMalloc failed!");
 				goto Error;
 			}
-			std::vector<std::complex<double>> res = ValkGPULib::calculateGPUSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);
+			std::vector<std::complex<double>> res;
+			if (gateDim < 256) {	
+				res = ValkGPULib::calculateGPUSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);
+			}
+			else {
+				// Ultra parallel
+				res = ValkGPULib::calculateGPULargeSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);
+			}
 			reordered->directModify(res);
 			sv->reconcile(reordered);
 			cudaFree(beforeGate);
