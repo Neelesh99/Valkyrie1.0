@@ -3,6 +3,14 @@
 
 const double PI = 3.1415926535;
 
+/*
+    ParsingGateUtilities.h
+    Description: File provides interface for functions needed for parsing compound and 
+    custom gates.
+
+*/
+
+// attachGateRequests is a utility function which appends a GateRequest vector to another GateRequest vector.
 std::vector<GateRequest> attachGateRequests(std::vector<GateRequest> initial, std::vector<GateRequest> addition) {
     for (int i = 0; i < addition.size(); i++) {
         initial.push_back(addition[i]);
@@ -10,6 +18,7 @@ std::vector<GateRequest> attachGateRequests(std::vector<GateRequest> initial, st
     return initial;
 }
 
+// fetchIDLoc selects a specific elements of a compound idLocationPairs
 idLocationPairs fetchIDLoc(idLocationPairs input, int i) {
     if (i >= input.getSize()) {
         return input;
@@ -20,6 +29,7 @@ idLocationPairs fetchIDLoc(idLocationPairs input, int i) {
     return x;
 }
 
+// zipIDLoc can combine the contents of two sets of idLocationPairs
 idLocationPairs zipIDLoc(idLocationPairs inp1, idLocationPairs inp2) {
     idLocationPairs x;
     x.identifiers = inp1.identifiers;
@@ -32,6 +42,7 @@ idLocationPairs zipIDLoc(idLocationPairs inp1, idLocationPairs inp2) {
     return x;
 }
 
+// getGateTypeS returns the primitive gate type for a given gate
 GateRequestType getGateTypeS(std::string gateType) {
     GateRequestType gtType;
     if (gateType == "U") {
@@ -99,6 +110,7 @@ std::map<std::string, GateRequestType> mapOfGateRequests = {
     {"c4x", c4x}
 };
 
+// gateGateTypeM returns the compound gate type for any given gate
 GateRequestType getGateTypeM(std::string gateType) {
     std::map<std::string, GateRequestType>::iterator it = mapOfGateRequests.find(gateType);
     if (it != mapOfGateRequests.end()) {
@@ -107,6 +119,7 @@ GateRequestType getGateTypeM(std::string gateType) {
     return CUSTOM;
 }
 
+// attachIDLocPairs attaches pairs onto a gate request
 GateRequest attachIDLocPairs(GateRequest input, idLocationPairs pairs) {
     for (int i = 0; i < pairs.identifiers.size(); i++) {
         input.addressQubit(pairs.identifiers[i], pairs.locations[i]);
@@ -116,6 +129,7 @@ GateRequest attachIDLocPairs(GateRequest input, idLocationPairs pairs) {
 
 // Hardware Primitive gates //
 
+// compileU3Gate compiles a parameterised U gate with 3 parameters
 std::vector<GateRequest> compileU3Gate(double theta, double phi, double lambda, idLocationPairs idLoc) {
     GateRequest gate(U);
     gate.addParameter(theta);
@@ -129,14 +143,17 @@ std::vector<GateRequest> compileU3Gate(double theta, double phi, double lambda, 
     return output;
 }
 
+// compileU2Gate compiles a parameterised U gate with 2 parameters
 std::vector<GateRequest> compileU2Gate(double phi, double lambda, idLocationPairs idLoc) {
     return compileU3Gate(PI / 2.0, phi, lambda, idLoc);
 }
 
+// compileU1Gate compiles a parameterised U gate with 1 parameter
 std::vector<GateRequest> compileU1Gate(double lambda, idLocationPairs idLoc) {
     return compileU3Gate(0, 0, lambda, idLoc);
 }
 
+// compileCXGate compiles a primitive CX gate
 std::vector<GateRequest> compileCXGate(idLocationPairs idLoc) {
     GateRequest gate(CX);
     if (idLoc.getSize() != 2) {
@@ -147,10 +164,12 @@ std::vector<GateRequest> compileCXGate(idLocationPairs idLoc) {
     return output;
 }
 
+// compileIDGate compiles Identity gate
 std::vector<GateRequest> compileIDGate(idLocationPairs idLoc) {
     return compileU3Gate(0, 0, 0, idLoc);
 }
 
+// compileU0Gate compiles Identity gate
 std::vector<GateRequest> compileU0Gate(double gamma, idLocationPairs idLoc) {
     return compileU3Gate(0, 0, 0, idLoc);
 }
@@ -632,6 +651,7 @@ std::vector<GateRequest> compileC4XGate(idLocationPairs idLoc) {
 
 }
 
+// compileGateRequest compiles a primitive gate request, as per user input
 GateRequest compileGateRequest(std::string gateType, idLocationPairs idLoc) {
     //GateRequestType gtType = getGateTypeS(gateType);
     GateRequestType gtType = getGateTypeM(gateType);
@@ -642,6 +662,7 @@ GateRequest compileGateRequest(std::string gateType, idLocationPairs idLoc) {
     return gate;
 }
 
+// compileGateRequest compiles a primitive gate request, as per user input
 GateRequest compileGateRequest(std::string gateType, std::vector<double> params, idLocationPairs idLoc) {
     //GateRequestType gtType = getGateTypeS(gateType);
     GateRequestType gtType = getGateTypeM(gateType);
@@ -653,6 +674,7 @@ GateRequest compileGateRequest(std::string gateType, std::vector<double> params,
     return gate;
 }
 
+// compileCompoundGateRequest compiles a qelib1 gate, as per user input
 std::vector<GateRequest> compileCompoundGateRequest(std::string gateType, idLocationPairs idLoc)
 {
     GateRequestType gtType = getGateTypeM(gateType);
@@ -859,6 +881,7 @@ std::vector<int> findMinMax(std::vector<std::vector<int>> paramsForGate, std::ve
     return result;
 }
 
+// gateCoupling used during custom gate compilation to hold information for full gate compilation when required
 struct gateCoupling {
     std::string gateName;
     std::vector<doubleOrArg> paramLocations;
@@ -904,6 +927,7 @@ std::function <std::vector<GateRequest>(std::vector<double> params, idLocationPa
     return deltaFunc;
 }
 
+// compileCustomGate generates a template function which can generate a full set of GateRequests for a custom defined gate
 std::function<std::vector<GateRequest>(std::vector<double>params, idLocationPairs idLoc)> compileCustomGate(gateDeclaration decl, std::vector<gateOp> gateOperations)
 {
     std::map<std::string, int> paramToLocation, idLocToLocation;

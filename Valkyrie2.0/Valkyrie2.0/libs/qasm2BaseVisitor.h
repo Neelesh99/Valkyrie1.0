@@ -11,7 +11,11 @@
 #include "ParsingGateUtilities.h"
 #include <map>
 
+/*
+    qasm2BaseVisitor.h
+    Description: File provides implementation for QASM2 visitation
 
+*/
 
 
 const double PI = 3.1415926535;
@@ -91,6 +95,7 @@ public:
         return commands_;
     }
 
+  // visitMainprog provides parsing logic for program as a whole
   virtual antlrcpp::Any visitMainprog(qasm2Parser::MainprogContext *ctx) override {                 //Complete
       if (ctx->version()) {
           HeaderData headerD = visitVersion(ctx->version()).as<HeaderData>();
@@ -102,6 +107,7 @@ public:
       return 1;
   }
 
+  // visitStatement provides parsing logic for visiting a single statement as a whole  
   virtual antlrcpp::Any visitStatement(qasm2Parser::StatementContext *ctx) override {               //Incomplete -gatedecl 
       if (ctx->decl()) {
           /*Register newRegister = visitDecl(ctx->decl()).as<Register>();
@@ -124,6 +130,7 @@ public:
     return visitChildren(ctx);
   }
 
+  // visitVersion provides parsing logic for the qasm version
   virtual antlrcpp::Any visitVersion(qasm2Parser::VersionContext *ctx) override {       // Complete
       if (ctx->REAL()) {
           std::vector<std::string> includes;
@@ -133,6 +140,7 @@ public:
     return visitChildren(ctx);
   }
 
+  // visitVersion provides parsing logic for a single declaration such as qreg or creg
   virtual antlrcpp::Any visitDecl(qasm2Parser::DeclContext *ctx) override {     // Complete
         antlr4::tree::TerminalNode* id = ctx->ID();
         std::string identifier = id->getText();
@@ -153,6 +161,7 @@ public:
       return 1;
   }
 
+  // visitVersion provides parsing logic for a custom gate declaration
   virtual antlrcpp::Any visitGatedecl(qasm2Parser::GatedeclContext *ctx) override {
       if (ctx->idlist().size() == 1) {          
           std::vector<std::string> idLocNames = visitIdlist(ctx->idlist()[0]);
@@ -173,7 +182,8 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual antlrcpp::Any visitGoplist(qasm2Parser::GoplistContext *ctx) override {           // Incomplete
+  // visitVersion provides parsing logic for a custom gate operation declaration
+  virtual antlrcpp::Any visitGoplist(qasm2Parser::GoplistContext *ctx) override {           
       if (ctx->uop().size() > 0) {
           std::vector<gateOp> gateOperations;
           for (auto uop : ctx->uop()) {
@@ -185,6 +195,7 @@ public:
       return 1;
   }
 
+  // visitQop provides parsing logic for a quantum operation
   virtual antlrcpp::Any visitQop(qasm2Parser::QopContext *ctx) override {   
     // Incomplete -measure
     if (ctx->getStart()->getText() == "measure") {
@@ -204,6 +215,7 @@ public:
     return visitChildren(ctx);
   }
 
+  // visitUop provides parsing logic for a unitary gate operation
   virtual antlrcpp::Any visitUop(qasm2Parser::UopContext *ctx) override {
       if (!gateDeclMode) {
           if (ctx->getStart()->getText() == "U") {
@@ -347,10 +359,12 @@ public:
     return 0;
   }
 
+  // visitAnyList provides parsing logic for a AnyList parsing
   virtual antlrcpp::Any visitAnylist(qasm2Parser::AnylistContext *ctx) override {               // Complete
       return visitChildren(ctx);
   }
-   
+  
+  // visitIdList provides parsing logic for an IdList
   virtual antlrcpp::Any visitIdlist(qasm2Parser::IdlistContext *ctx) override {                 // Complete
       std::vector<antlr4::tree::TerminalNode*> ids = ctx->ID();
       std::vector<std::string> idStrings;
@@ -360,6 +374,7 @@ public:
       return idStrings;
   }
 
+  // visitMixedList provides parsing logic for a MixedList
   virtual antlrcpp::Any visitMixedlist(qasm2Parser::MixedlistContext *ctx) override {           // Complete
       int countID = ctx->ID().size();
       int countINT = ctx->INT().size();
@@ -420,6 +435,7 @@ public:
     return visitChildren(ctx);
   }
 
+  // visitArgument provides parsing logic for an argument for a gate
   virtual antlrcpp::Any visitArgument(qasm2Parser::ArgumentContext *ctx) override {             // Complete
       idLocationPairs pairs;
       if (ctx->INT()) {
@@ -442,6 +458,7 @@ public:
       return pairs;
   }
 
+  // visitExpList provides parsing logic for an expList for a gate
   virtual antlrcpp::Any visitExplist(qasm2Parser::ExplistContext *ctx) override {           // Complete
       if (!gateDeclMode) {
           std::vector<double> values;
@@ -461,6 +478,7 @@ public:
       }
   }
 
+  // visitExp provides parsing logic for any general expression
   virtual antlrcpp::Any visitExp(qasm2Parser::ExpContext *ctx) override {
       if (!ctx->unaryop()) {
           if (!ctx->ID()) {
@@ -550,6 +568,7 @@ public:
     return visitChildren(ctx);
   }
 
+  // visitUnaryOp provides parsing logic for generic unary operation
   virtual antlrcpp::Any visitUnaryop(qasm2Parser::UnaryopContext *ctx) override {               // Complete
       std::string operation_ = ctx->getText();
       if (operation_ == "sin") {

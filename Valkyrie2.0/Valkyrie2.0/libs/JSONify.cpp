@@ -1,5 +1,12 @@
 #include "JSONify.h"
 
+/*
+	JSONify.cpp
+	Description: File provides implementation of JSON printing
+
+*/
+
+// printJSON converts results of computation into JSOn format readable by VisualQ
 void JSONify::printJSON()
 {
 	std::string starter = "{";

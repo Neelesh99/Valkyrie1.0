@@ -3,6 +3,12 @@
 #include <vector>
 #include "BaseTypes.h"
 
+/*
+	Stager.h
+	Description: File provides interface for functions needed for staging functionality
+
+*/
+
 class Stager {
 private:
 	std::vector<Register> registers_;
@@ -19,6 +25,8 @@ private:
 		return true;
 	}
 
+	// concurrencyCalc can calculate whether we need a break for concurrency
+	//  then loads the appropriate gates into each block
 	bool concurrencyCalc() {
 		ConcurrentBlock block(0);
 		for (auto gateR : gates_) {

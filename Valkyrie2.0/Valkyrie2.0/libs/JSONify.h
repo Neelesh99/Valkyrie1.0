@@ -1,7 +1,13 @@
 #pragma once
 #include "BaseTypes.h"
 
+/*
+	JSONify.h
+	Description: File provides interface for JSON printing
 
+*/
+
+// JSONify provides methods to convert results of computation into easily parsable JSON format
 class JSONify {
 private:
 	std::vector<Register> registers_;

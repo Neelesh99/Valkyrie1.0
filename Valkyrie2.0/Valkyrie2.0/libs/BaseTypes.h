@@ -32,9 +32,10 @@
 	StateVector
 */
 
-// idLocationPairs is a datastructure used extensively in the parsing stage of Valkyrie, used to relate
-// which exact qubit(s) a particular gate is supposed to be operating on.
+
 struct idLocationPairs {
+	// idLocationPairs is a datastructure used extensively in the parsing stage of Valkyrie, used to relate
+	// which exact qubit(s) a particular gate is supposed to be operating on.
 	std::vector<std::string> identifiers;
 	std::vector<int> locations;
 	int getSize() {
