@@ -6,8 +6,22 @@
 using namespace std::complex_literals;
 const double ROOT2INV = 1.0 / std::pow(2, 0.5);
 
+/*
+	CPUDevice.cpp
+	Description: This file defines the implementation of the functions defined
+	in CPUDevice.h
 
+	Defined Classes:
+	CPUQubitFactory
+	CPUGateFactory
+	CPUQuantumCircuit
+	CPUQuantumProcessor
+	CPUDevice
 
+*/
+
+// getGateMatrix gneerates basic primitive gates (U, CX)
+// uses buildU3GateCPU to construct the parameterised U gate.
 std::vector<std::vector<std::complex<double>>> getGateMatrix(GateRequest gate) {
 	GateRequestType gateType = gate.getGateType();
 	switch (gateType) {
@@ -29,6 +43,8 @@ std::vector<std::vector<std::complex<double>>> getGateMatrix(GateRequest gate) {
 	}
 }
 
+// generateQubit allocates heap memory for complex number and loads it into
+// a heap memory allocated Qubit and tracks the generated qubits
 Qubit* CPUQubitFactory::generateQubit()
 {
 	// Allocate heap memory for Qubit values
@@ -44,6 +60,7 @@ Qubit* CPUQubitFactory::generateQubit()
 	return generatedQubit;
 }
 
+// deconstructor cleans up any heap memory allocation
 CPUQubitFactory::~CPUQubitFactory()
 {
 	for (auto qubit : qubits_) {
@@ -53,6 +70,8 @@ CPUQubitFactory::~CPUQubitFactory()
 	}
 }
 
+// generateQubit allocates heap memory for complex numbers and loads it into
+// a heap memory allocated Gate and tracks the generated gates
 Gate* CPUGateFactory::generateGate(GateRequest request)
 {
 	std::vector<std::vector<std::complex<double>>> gateMatrix = getGateMatrix(request);
@@ -64,6 +83,7 @@ Gate* CPUGateFactory::generateGate(GateRequest request)
 	return generatedGate;
 }
 
+// deconstructor cleans up any heap memory allocation
 CPUGateFactory::~CPUGateFactory()
 {
 	for (auto gate : gates_) {
@@ -71,6 +91,8 @@ CPUGateFactory::~CPUGateFactory()
 	}
 }
 
+// zipSVPairs zips together identifiers and locations to generate SVPairs which can be used in
+// statevector lookup
 std::vector<SVPair> CPUQuantumCircuit::zipSVPairs(std::vector<std::string> names, std::vector<int> locs)
 {
 	std::vector<SVPair> values;
@@ -87,6 +109,8 @@ void CPUQuantumCircuit::loadQubitMap(std::map<std::string, std::vector<Qubit*>> 
 	sv_->tensorProduct();
 }
 
+// loadBlock takes a concurretn block from the Staging module and converts it into
+// a series if operable Calculation datatypes
 void CPUQuantumCircuit::loadBlock(ConcurrentBlock block)
 {
 	std::vector<GateRequest> gates = block.getGates();
@@ -106,6 +130,8 @@ void CPUQuantumCircuit::loadBlock(ConcurrentBlock block)
 	calculations_.push_back(calcs);
 }
 
+// getNextCalculation is used during the processing, to queue up calculations and 
+// raises the done_ flag if computation is complete
 std::vector<Calculation> CPUQuantumCircuit::getNextCalculation()
 {	
 	if (calcCounter == calculations_.size() - 1) {
@@ -119,11 +145,13 @@ std::vector<Calculation> CPUQuantumCircuit::getNextCalculation()
 	}
 }
 
+// For fast computation
 std::map<std::string, std::vector<Qubit*>> CPUQuantumCircuit::returnResults()
 {
 	return qubitMap_;
 }
 
+// For Statevector computation
 StateVector* CPUQuantumCircuit::getStateVector()
 {
 	return sv_;
@@ -137,6 +165,8 @@ bool CPUQuantumCircuit::checkComplete()
 	return done_;
 }
 
+// getCXResults generates an 2^n by 2^n matrix from the tensor product of I gates and a final CX gate
+// returns this matrix for computation
 std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getCXResult(int n)
 {
 	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
@@ -158,6 +188,8 @@ std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getCXResult(
 		subVec.resize(dimOverall);
 		output[i] = subVec;
 	}
+	// skinny calculation due to the CX being the last matrix in a series of I tensor products
+	// using tail methodology
 	for (int i = 0; i < std::pow(2, leftOver); i++) {
 		output[4 * i][4 * i] = 1;
 		output[4 * i + 1][4 * i + 1] = 1;
@@ -167,6 +199,7 @@ std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getCXResult(
 	return output;
 }
 
+// getGenericUResult return tensor product of a series of I gates and finally the U gate we are applying
 std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getGenericUResult(Gate* gate, int n)
 {
 	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
@@ -188,6 +221,8 @@ std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getGenericUR
 		subVec.resize(dimOverall);
 		output[i] = subVec;
 	}
+	// skinny calculation due to the CX being the last matrix in a series of I tensor products
+	// using tail methodology
 	for (int i = 0; i < std::pow(2, leftOver); i++) {
 		output[2 * i][2 * i] = gate->fetchValue(0,0);
 		output[2 * i][2 * i + 1] = gate->fetchValue(0, 1);
@@ -201,14 +236,14 @@ void CPUQuantumProcessor::loadCircuit(AbstractQuantumCircuit* circuit)
 {
 	circuit_ = circuit;
 }
-
+// calculate method for isolated fast computation
 void CPUQuantumProcessor::calculate()
 {
-	while (!circuit_->checkComplete()) {
-		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
+	while (!circuit_->checkComplete()) {	// check if there still calculations to complete
+		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();	// fetch next calculation
 		for (auto calc : calcBlock) {
 			Gate* gate = calc.getGate();			
-			int m = gate->getM();
+			int m = gate->getM();		// resolve gate dimensions
 			int n = gate->getN();
 			int qubitN = m / 2;
 			std::vector<std::complex<double>> qubitValsBefore_;
@@ -217,20 +252,18 @@ void CPUQuantumProcessor::calculate()
 			if (m == 2) {
 				qubitValsBefore_.push_back(*qubits[0]->fetch(0));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(1));
-				std::vector<std::vector<std::complex<double>>> gateP = getGenericUResult(gate, circuit_->getStateVector()->getN());
 			}
 			else {
-				// Perform tensor product
+				// Perform local tensor product
 				qubitValsBefore_.push_back(*qubits[0]->fetch(0) * *qubits[1]->fetch(0));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(0) * *qubits[1]->fetch(1));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(1) * *qubits[1]->fetch(0));
 				qubitValsBefore_.push_back(*qubits[0]->fetch(1) * *qubits[1]->fetch(1));
-				std::vector<std::vector<std::complex<double>>> gateP = getCXResult(circuit_->getStateVector()->getN());
 			}
 			for (int i = 0; i < m; i++) {
 				std::complex<double> val = 0;
 				for (int j = 0; j < n; j++) {
-					val += gate->fetchValue(i, j) * qubitValsBefore_[j];
+					val += gate->fetchValue(i, j) * qubitValsBefore_[j];		// matrix multiplication
 				}
 				qubitValsAfter_.push_back(val);
 			}
@@ -238,7 +271,7 @@ void CPUQuantumProcessor::calculate()
 				Qubit* qubit = qubits[0];
 				*qubit->fetch(0) = qubitValsAfter_[0];
 				*qubit->fetch(1) = qubitValsAfter_[1];
-				circuit_->getStateVector()->quickRefresh();
+				circuit_->getStateVector()->quickRefresh();						// Since qubit vals are already update, we can just quickly refresh the statevector
 			}
 			else {
 				Qubit* qubit1 = qubits[0];
@@ -247,30 +280,31 @@ void CPUQuantumProcessor::calculate()
 				*qubit1->fetch(1) = qubitValsAfter_[2] + qubitValsAfter_[3];
 				*qubit2->fetch(0) = qubitValsAfter_[0] + qubitValsAfter_[2];
 				*qubit2->fetch(1) = qubitValsAfter_[1] + qubitValsAfter_[3];
-				circuit_->getStateVector()->modifyState(qubitValsAfter_, calc.getLocations()[0], calc.getLocations()[1]);
+				circuit_->getStateVector()->modifyState(qubitValsAfter_, calc.getLocations()[0], calc.getLocations()[1]);	// For entanglement relations we have to use the modifyState method
 			}
 		}
 	}
 }
 
+// calculateWithStateVector for accurate Quantum Computer emulation, uses statevector in it's entirety
 void CPUQuantumProcessor::calculateWithStateVector()
 {
-	while (!circuit_->checkComplete()) {
-		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
+	while (!circuit_->checkComplete()) {	// check if there are still calculations to consume
+		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();	// fetch calculation
 		for (auto calc : calcBlock) {
 			Gate* gate = calc.getGate();
 			int m = gate->getM();
 			int n = gate->getN();
 			int qubitN = m / 2;
-			StateVector* sv = circuit_->getStateVector();
-			std::vector<SVPair> newOrder = calc.getNewOrder(sv->getOrder());
-			StateVector* reordered = sv->reorder(newOrder);
+			StateVector* sv = circuit_->getStateVector();						// get current state vector
+			std::vector<SVPair> newOrder = calc.getNewOrder(sv->getOrder());	// use the calculation function to work out the new order of the state vector for tail procedure
+			StateVector* reordered = sv->reorder(newOrder);						// fetch temporary statevector using reordered tensor product
 			std::vector<std::vector<std::complex<double>>> gateValues;
 			if (m == 2) {
-				gateValues = getGenericUResult(gate, sv->getN());
+				gateValues = getGenericUResult(gate, sv->getN());				// Generate full gate matrix
 			}
 			if (m == 4) {
-				gateValues = getCXResult(sv->getN());
+				gateValues = getCXResult(sv->getN());							// Generate full gate matrix
 			}
 			if (gateValues.size() == 0) {
 				return;
@@ -279,12 +313,12 @@ void CPUQuantumProcessor::calculateWithStateVector()
 			for (int i = 0; i < gateValues.size(); i++) {
 				std::complex<double> acc = 0;
 				for (int j = 0; j < gateValues.size(); j++) {
-					acc += gateValues[i][j] * reordered->getSVValue(j);
+					acc += gateValues[i][j] * reordered->getSVValue(j);			// full state vector calculation
 				}
 				newValues.push_back(acc);				
 			}
-			reordered->directModify(newValues);
-			sv->reconcile(reordered);
+			reordered->directModify(newValues);									// set newValues of reordered state vector
+			sv->reconcile(reordered);											// reconcile temporary order for statevector for the original order
 		}
 	}
 }

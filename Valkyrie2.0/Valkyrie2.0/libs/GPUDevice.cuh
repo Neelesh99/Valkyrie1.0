@@ -1,6 +1,22 @@
 ﻿#include "AbstractDevice.h"
 #include "cuda_runtime.h"
 
+/*
+	GPUDevice.cuh
+	Description: This header file defines the GPU implementation of an Abstract Device as
+	presented in AbstractDevice.h.
+
+	Defined Classes:
+	GPUQubitFactory
+	GPUGateFactory
+	GPUQuantumCircuit
+	GPUQuantumProcessor
+	GPUDevice
+
+*/
+
+// GPUQubitFactory implements the interface for AbstractQubitFactory
+// Allocates, tracks and de-allocates memory for QubitStates
 class GPUQubitFactory : public AbstractQubitFactory {
 private:
 	DeviceType type_;
@@ -13,6 +29,8 @@ public:
 	~GPUQubitFactory();
 };
 
+// GPUGateFactory implements the interface for AbstractGateFactory
+// Allocates, tracks and de-allocates memory for Gate values
 class GPUGateFactory : public AbstractGateFactory {
 private:
 	DeviceType type_;
@@ -25,6 +43,8 @@ public:
 	~GPUGateFactory();
 };
 
+// GPUQuantumCircuit implements the interface for AbstractQuantumCircuit
+// Compiles calculation commands into actual matrices ready for computation
 class GPUQuantumCircuit : public AbstractQuantumCircuit {
 private:
 	DeviceType type_;
@@ -52,6 +72,8 @@ public:
 	}
 };
 
+// GPUQuantumProcessor implements the interface for AbstractQuantumProcessor
+// performs matrix calculations using the loaded quantum circuit to fetch calculations
 class GPUQuantumProcessor : public AbstractQuantumProcessor {
 private:
 	DeviceType type_;
@@ -68,6 +90,8 @@ public:
 	std::map<std::string, std::vector<Qubit*>> qubitMapfetchQubitValues();
 };
 
+// GPUDevice implements the Abstract device interface
+// Collects all components required for GPU execution
 class GPUDevice : public AbstractDevice {
 private:
 	DeviceType type_;

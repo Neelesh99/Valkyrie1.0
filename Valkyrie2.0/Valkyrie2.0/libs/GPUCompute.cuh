@@ -3,17 +3,39 @@
 #include "cuComplex.h"
 #include "BaseTypes.h"
 
+/*
+	GPUCompute.cuh
+	Description: Library of GPU specific functions needed to parallelise gate calculations
+
+	Functions defined:
+	matrixMul
+	svMatrixMul
+	svMatrixUltraMul
+	svAddLargeScale
+	convertQubitComplex
+	convertComplexQubit
+	tensorProduct
+	calculateGPU2x2
+	calculateGPU4x4
+	calculateGPU
+	calculateGPU2x2
+	calculateGPU4x4
+	calculateGPULargeSV
+	calculateGPUSV
+*/
+
 namespace ValkGPULib {
 
+	// matrixMul is GPU code for fast compute mode parallel row computation
 	__global__ void matrixMul(cuDoubleComplex* output, const cuDoubleComplex* input, const cuDoubleComplex* gate, const int m) {
 		int loc = threadIdx.x;
 		output[loc] = make_cuDoubleComplex(0, 0);
 		for (int i = 0; i < m; i++) {
 			output[loc] = cuCadd(cuCmul(input[i], gate[m * loc + i]), output[loc]);
-			//printf("Thread: %d, i = %d, value of multiplication: %f current value of output[loc]: %f \n", loc, i, cuCmul(input[i], gate[m * loc + i]).x, output[loc].x);
 		}
 	}
 
+	// svMatrixMul is GPU code for statevector compute mode parallel row computation
 	__global__ void svMatrixMul(cuDoubleComplex* output, const cuDoubleComplex* input, const cuDoubleComplex* gate, int m){
 		int loc = blockIdx.x * blockDim.x + threadIdx.x;
 		output[loc] = make_cuDoubleComplex(0, 0);
@@ -22,27 +44,32 @@ namespace ValkGPULib {
 		}
 	}
 
+	// svMatrixUltraMul is GPU code for massively parallel large scale computation
 	__global__ void svMatrixUltraMul(cuDoubleComplex* output, const cuDoubleComplex* input, const cuDoubleComplex* gate, int m) {
 		int loc = blockIdx.x * blockDim.x + threadIdx.x;
 		output[loc] = cuCmul(input[loc % m], gate[loc]);
 	}
 
+	// svAddLargeScale provides the summation of the temporary calculations provided by the svMatrixUltraMul
 	__global__ void svAddLargeScale(cuDoubleComplex* output, cuDoubleComplex* input, int m) {
 		int loc = threadIdx.x;
 		output[loc] = make_cuDoubleComplex(0, 0);
 		for (int i = 0; i < m; i++) {
 			output[loc] = cuCadd(output[loc], input[m * loc + i]);
-		}
+		} 
 	}
 
+	// convertQubitComplex converts  representation C++ stlib complex number into CUDA Complex number representation
 	cuDoubleComplex convertQubitComplex(std::complex<double> input) {
 		return make_cuDoubleComplex(input.real(), input.imag());
 	}
 
+	// convertQubitComplex converts CUDA Complex number representation into C++ stlib complex number representation
 	std::complex<double> convertComplexQubit(cuDoubleComplex input) {
 		return std::complex<double>(input.x, input.y);
 	}
 
+	// tensorProduct calculates tensor product values for fast compute mode
 	cuDoubleComplex tensorProduct(std::vector<Qubit*> inputQubits, int i) {
 		Qubit* qubit1 = inputQubits[0];
 		Qubit* qubit2 = inputQubits[1];
@@ -54,6 +81,7 @@ namespace ValkGPULib {
 
 	std::vector<std::complex<double>> calculateGPU4x4(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, Gate* gate, std::vector<Qubit*> qubits, int m, int n);
 
+	// calculateGPU is the overall calling function for fast compute mode
 	std::vector<std::complex<double>> calculateGPU(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, Gate* gate, std::vector<Qubit*> qubits) {
 		int m = gate->getM();
 		int n = gate->getN();
@@ -72,6 +100,7 @@ namespace ValkGPULib {
 		return results;
 	}
 
+	// calculateGPU2x2 allows for single qubit gate parallelisation for fast compute mode
 	std::vector<std::complex<double>> calculateGPU2x2(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, Gate* gate, std::vector<Qubit*> qubits, int m, int n){
 		const int arraySize = 2;
 		const cuDoubleComplex before[arraySize] = { convertQubitComplex(*(qubits[0]->fetch(0))), convertQubitComplex(*qubits[0]->fetch(1)) };
@@ -129,6 +158,7 @@ namespace ValkGPULib {
 		return std::vector<std::complex<double>>();
 	}
 
+	// calculateGPU4x4 allows for double qubit gate parallelisation for fast compute mode
 	std::vector<std::complex<double>> calculateGPU4x4(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, Gate* gate, std::vector<Qubit*> qubits, int m, int n) {
 		const int arraySize = 4;
 		const cuDoubleComplex before[arraySize] = { tensorProduct(qubits, 0), tensorProduct(qubits, 1) , tensorProduct(qubits, 2), tensorProduct(qubits, 3) };
@@ -193,6 +223,7 @@ namespace ValkGPULib {
 
 	/// State Vector compute mode ///
 
+	// calculateGPULargeSV allows for large size statevector -- gate multiplication to be entirely parallelised
 	std::vector<std::complex<double>> calculateGPULargeSV(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, StateVector* reordered, std::vector<std::vector<std::complex<double>>> gateValuesV) {
 		int arraySize = gateValuesV.size();
 		cuDoubleComplex* before = new cuDoubleComplex[arraySize];
@@ -278,6 +309,7 @@ namespace ValkGPULib {
 		return output;
 	}
 
+	// calculateGPUSV allows for small to medium statevectors to be easily parallelised
 	std::vector<std::complex<double>> calculateGPUSV(cuDoubleComplex* beforeGate, cuDoubleComplex* gateValues, cuDoubleComplex* afterGate, StateVector* reordered, std::vector<std::vector<std::complex<double>>> gateValuesV) {
 		int arraySize = gateValuesV.size();
 		cuDoubleComplex* before = new cuDoubleComplex[arraySize];

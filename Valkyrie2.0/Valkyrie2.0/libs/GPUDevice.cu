@@ -9,8 +9,22 @@
 using namespace std::complex_literals;
 const double ROOT2INV = 1.0 / std::pow(2, 0.5);
 
+/*
+	GPUDevice.cu
+	Description: This file defines the implementation of the functions defined
+	in GPUDevice.cuh
 
+	Defined Classes:
+	GPUQubitFactory
+	GPUGateFactory
+	GPUQuantumCircuit
+	GPUQuantumProcessor
+	GPUDevice
 
+*/
+
+// getGateMatrix gneerates basic primitive gates (U, CX)
+// uses buildU3GateGPU to construct the parameterised U gate.
 std::vector<std::vector<std::complex<double>>> getGateMatrixGPU(GateRequest gate) {
 	GateRequestType gateType = gate.getGateType();
 	switch (gateType) {
@@ -32,7 +46,8 @@ std::vector<std::vector<std::complex<double>>> getGateMatrixGPU(GateRequest gate
 	}
 }
 
-
+// generateQubit allocates heap memory for complex number and loads it into
+// a heap memory allocated Qubit and tracks the generated qubits
 Qubit* GPUQubitFactory::generateQubit()
 {
 	// Allocate heap memory for Qubit values
@@ -48,6 +63,7 @@ Qubit* GPUQubitFactory::generateQubit()
 	return generatedQubit;
 }
 
+// deconstructor cleans up any heap memory allocation
 GPUQubitFactory::~GPUQubitFactory()
 {
 	for (auto qubit : qubits_) {
@@ -57,6 +73,8 @@ GPUQubitFactory::~GPUQubitFactory()
 	}
 }
 
+// generateQubit allocates heap memory for complex numbers and loads it into
+// a heap memory allocated Gate and tracks the generated gates
 Gate* GPUGateFactory::generateGate(GateRequest request)
 {
 	std::vector<std::vector<std::complex<double>>> gateMatrix = getGateMatrixGPU(request);
@@ -68,6 +86,7 @@ Gate* GPUGateFactory::generateGate(GateRequest request)
 	return generatedGate;
 }
 
+// deconstructor cleans up any heap memory allocation
 GPUGateFactory::~GPUGateFactory()
 {
 	for (auto gate : gates_) {
@@ -75,6 +94,8 @@ GPUGateFactory::~GPUGateFactory()
 	}
 }
 
+// zipSVPairs zips together identifiers and locations to generate SVPairs which can be used in
+// statevector lookup
 std::vector<SVPair> GPUQuantumCircuit::zipSVPairs(std::vector<std::string> names, std::vector<int> locs)
 {
 	std::vector<SVPair> values;
@@ -91,6 +112,8 @@ void GPUQuantumCircuit::loadQubitMap(std::map<std::string, std::vector<Qubit*>> 
 	sv_->tensorProduct();
 }
 
+// loadBlock takes a concurrent block from the Staging module and converts it into
+// a series if operable Calculation datatypes
 void GPUQuantumCircuit::loadBlock(ConcurrentBlock block)
 {
 	std::vector<GateRequest> gates = block.getGates();
@@ -110,6 +133,8 @@ void GPUQuantumCircuit::loadBlock(ConcurrentBlock block)
 	calculations_.push_back(calcs);
 }
 
+// getNextCalculation is used during the processing, to queue up calculations and 
+// raises the done_ flag if computation is complete
 std::vector<Calculation> GPUQuantumCircuit::getNextCalculation()
 {
 	if (calcCounter == calculations_.size() - 1) {
@@ -123,11 +148,13 @@ std::vector<Calculation> GPUQuantumCircuit::getNextCalculation()
 	}
 }
 
+// For fast computation
 std::map<std::string, std::vector<Qubit*>> GPUQuantumCircuit::returnResults()
 {
 	return qubitMap_;
 }
 
+// For Statevector computation
 StateVector* GPUQuantumCircuit::getStateVector()
 {
 	return sv_;
@@ -141,6 +168,8 @@ bool GPUQuantumCircuit::checkComplete()
 	return done_;
 }
 
+// getCXResults generates an 2^n by 2^n matrix from the tensor product of I gates and a final CX gate
+// returns this matrix for computation
 std::vector<std::vector<std::complex<double>>> GPUQuantumProcessor::getCXResult(int n)
 {
 	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
@@ -162,6 +191,8 @@ std::vector<std::vector<std::complex<double>>> GPUQuantumProcessor::getCXResult(
 		subVec.resize(dimOverall);
 		output[i] = subVec;
 	}
+	// skinny calculation due to the CX being the last matrix in a series of I tensor products
+	// using tail methodology
 	for (int i = 0; i < std::pow(2, leftOver); i++) {
 		output[4 * i][4 * i] = 1;
 		output[4 * i + 1][4 * i + 1] = 1;
@@ -171,6 +202,7 @@ std::vector<std::vector<std::complex<double>>> GPUQuantumProcessor::getCXResult(
 	return output;
 }
 
+// getGenericUResult return tensor product of a series of I gates and finally the U gate we are applying
 std::vector<std::vector<std::complex<double>>> GPUQuantumProcessor::getGenericUResult(Gate* gate, int n)
 {
 	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
@@ -192,6 +224,8 @@ std::vector<std::vector<std::complex<double>>> GPUQuantumProcessor::getGenericUR
 		subVec.resize(dimOverall);
 		output[i] = subVec;
 	}
+	// skinny calculation due to the CX being the last matrix in a series of I tensor products
+	// using tail methodology
 	for (int i = 0; i < std::pow(2, leftOver); i++) {
 		output[2 * i][2 * i] = gate->fetchValue(0, 0);
 		output[2 * i][2 * i + 1] = gate->fetchValue(0, 1);
@@ -206,6 +240,7 @@ void GPUQuantumProcessor::loadCircuit(AbstractQuantumCircuit* circuit)
 	circuit_ = circuit;
 }
 
+// calculate method for isolated fast computation
 void GPUQuantumProcessor::calculate()
 {
 	// Generate initial arrays
@@ -222,7 +257,7 @@ void GPUQuantumProcessor::calculate()
 			int qubitN = m / 2;
 			cudaError_t cudaStatus;			
 			// Allocate shared space
-			cudaStatus = cudaMalloc((void**)&beforeGate, m * sizeof(cuDoubleComplex));
+			cudaStatus = cudaMalloc((void**)&beforeGate, m * sizeof(cuDoubleComplex));				// Allocate GPU memory for gate arrays
 			if (cudaStatus != cudaSuccess) {
 				fprintf(stderr, "cudaMalloc failed!");
 				goto Error;
@@ -237,6 +272,7 @@ void GPUQuantumProcessor::calculate()
 				fprintf(stderr, "cudaMalloc failed!");
 				goto Error;
 			}
+			// Uses GPUCompute.cuh functions to perform calculation
 			std::vector<std::complex<double>> res = ValkGPULib::calculateGPU(beforeGate, gateValues, afterGate, calc.getGate(), calc.getQubits());
 			if (res.size() == 2) {
 				circuit_->getStateVector()->quickRefresh();
@@ -256,6 +292,7 @@ Error:
 	cudaFree(gateValues);
 }
 
+// calculateWithStateVector for accurate Quantum Computer emulation, uses statevector in it's entirety
 void GPUQuantumProcessor::calculateWithStateVector()
 {
 	// Generate initial arrays
@@ -263,30 +300,30 @@ void GPUQuantumProcessor::calculateWithStateVector()
 	cuDoubleComplex* beforeGate;
 	cuDoubleComplex* gateValues;
 	cuDoubleComplex* afterGate;
-	while (!circuit_->checkComplete()) {
-		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();
+	while (!circuit_->checkComplete()) {	// check if there are still calculations to consume
+		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();	// fetch calculation
 		for (auto calc : calcBlock) {			
 			Gate* gate = calc.getGate();
 			int m = gate->getM();
 			int n = gate->getN();
 			int qubitN = m / 2;
-			StateVector* sv = circuit_->getStateVector();
+			StateVector* sv = circuit_->getStateVector();						// get current state vector
 			int gateDim = sv->getState().size();
-			std::vector<SVPair> newOrder = calc.getNewOrder(sv->getOrder());
-			StateVector* reordered = sv->reorder(newOrder);
+			std::vector<SVPair> newOrder = calc.getNewOrder(sv->getOrder());	// use the calculation function to work out the new order of the state vector for tail procedure
+			StateVector* reordered = sv->reorder(newOrder);						// fetch temporary statevector using reordered tensor product
 			std::vector<std::vector<std::complex<double>>> gateValuesV;
 			if (m == 2) {
-				gateValuesV = getGenericUResult(gate, sv->getN());
+				gateValuesV = getGenericUResult(gate, sv->getN());				// Generate full gate matrix
 			}
 			if (m == 4) {
-				gateValuesV = getCXResult(sv->getN());
+				gateValuesV = getCXResult(sv->getN());							// Generate full gate matrix
 			}
 			if (gateValuesV.size() == 0) {
 				return;
 			}
 			cudaError_t cudaStatus;
 			// Allocate shared space
-			cudaStatus = cudaMalloc((void**)&beforeGate, gateDim * sizeof(cuDoubleComplex));
+			cudaStatus = cudaMalloc((void**)&beforeGate, gateDim * sizeof(cuDoubleComplex));		// Allocate GPU memory for gate arrays
 			if (cudaStatus != cudaSuccess) {
 				fprintf(stderr, "cudaMalloc failed!");
 				goto Error;
@@ -303,14 +340,14 @@ void GPUQuantumProcessor::calculateWithStateVector()
 			}
 			std::vector<std::complex<double>> res;
 			if (gateDim < 256) {	
-				res = ValkGPULib::calculateGPUSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);
+				res = ValkGPULib::calculateGPUSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);		// For smaller scale gates we used partially parallel processing
 			}
 			else {
 				// Ultra parallel
-				res = ValkGPULib::calculateGPULargeSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);
+				res = ValkGPULib::calculateGPULargeSV(beforeGate, gateValues, afterGate, reordered, gateValuesV);	// Larger gate require fully parallel processing
 			}
-			reordered->directModify(res);
-			sv->reconcile(reordered);
+			reordered->directModify(res);								// set newValues of reordered state vector
+			sv->reconcile(reordered);									// reconcile temporary order for statevector for the original order
 			cudaFree(beforeGate);
 			cudaFree(afterGate);
 			cudaFree(gateValues);
