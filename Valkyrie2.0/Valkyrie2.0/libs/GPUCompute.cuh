@@ -358,7 +358,7 @@ namespace ValkGPULib {
 		}
 
 		// cudaDeviceSynchronize waits for the kernel to finish, and returns
-		// any errors encountered during the launch.
+		// any errors encountered during the launch agrim.
 		cudaStatus = cudaDeviceSynchronize();
 		if (cudaStatus != cudaSuccess) {
 			fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
