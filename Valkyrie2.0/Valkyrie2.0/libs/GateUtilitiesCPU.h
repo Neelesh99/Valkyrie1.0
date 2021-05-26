@@ -1,8 +1,15 @@
 #pragma once
 #include "BaseTypes.h"
 
+/*
+	GateUtilitiesCPU.h
+	Description: defines utilities for gate matrix generation
+
+*/
+
 const std::complex<double> IMAGCPU(0,1);
 
+// buildU3GateCPU uses trigonometric functions to generate U gate
 std::vector<std::vector<std::complex<double>>> buildU3GateCPU(GateRequest gate) {
 	double theta = gate.getParameters()[0];
 	double phi = gate.getParameters()[1];

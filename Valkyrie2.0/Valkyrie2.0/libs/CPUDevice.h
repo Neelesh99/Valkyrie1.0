@@ -2,6 +2,22 @@
 
 #include "AbstractDevice.h"
 
+/*
+	CPUDevice.h
+	Description: This header file defines the CPU implementation of an Abstract Device as 
+	presented in AbstractDevice.h. 
+
+	Defined Classes:
+	CPUQubitFactory
+	CPUGateFactory
+	CPUQuantumCircuit
+	CPUQuantumProcessor
+	CPUDevice
+
+*/
+
+// CPUQubitFactory implements the interface for AbstractQubitFactory
+// Allocates, tracks and de-allocates memory for QubitStates
 class CPUQubitFactory : public AbstractQubitFactory {
 private:
 	DeviceType type_;
@@ -14,6 +30,8 @@ public:
 	~CPUQubitFactory();
 };
 
+// CPUGateFactory implements the interface for AbstractGateFactory
+// Allocates, tracks and de-allocates memory for Gate values
 class CPUGateFactory : public AbstractGateFactory {
 private:
 	DeviceType type_;
@@ -26,6 +44,8 @@ public:
 	~CPUGateFactory();
 };
 
+// CPUQuantumCircuit implements the interface for AbstractQuantumCircuit
+// Compiles calculation commands into actual matrices ready for computation
 class CPUQuantumCircuit : public AbstractQuantumCircuit {
 private:
 	DeviceType type_;
@@ -53,6 +73,8 @@ public:
 	}
 };
 
+// CPUQuantumProcessor implements the interface for AbstractQuantumProcessor
+// performs matrix calculations using the loaded quantum circuit to fetch calculations
 class CPUQuantumProcessor : public AbstractQuantumProcessor {
 private:
 	DeviceType type_;
@@ -69,6 +91,8 @@ public:
 	std::map<std::string, std::vector<Qubit*>> qubitMapfetchQubitValues();
 };
 
+// CPUDevice implements the Abstract device interface
+// Collects all components required for CPU execution
 class CPUDevice : public AbstractDevice {
 private:
 	DeviceType type_;

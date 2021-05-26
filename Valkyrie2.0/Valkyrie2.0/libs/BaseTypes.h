@@ -5,7 +5,37 @@
 #include <map>
 #include <iostream>
 
+/*
+	BaseTypes.h
+	Description: Defines all common datatypes used throughout the codebase
+
+	Defined Classes:
+	idLocationPairs
+	SVPair
+	expEval
+	doubleOrArg
+	gateDeclaration
+	gateOp
+	DeviceType
+	HeaderData
+	RegisterType
+	QuantumRegister
+	ClassicalRegister
+	Register
+	GateRequestType
+	GateRequest
+	ConcurrentBlock
+	Qubit
+	Gate
+	Calculation
+	MeasureCommand
+	StateVector
+*/
+
+
 struct idLocationPairs {
+	// idLocationPairs is a datastructure used extensively in the parsing stage of Valkyrie, used to relate
+	// which exact qubit(s) a particular gate is supposed to be operating on.
 	std::vector<std::string> identifiers;
 	std::vector<int> locations;
 	int getSize() {
@@ -13,6 +43,8 @@ struct idLocationPairs {
 	}
 };
 
+// SVPair similar ot idLocationPairs but to be used exclusively in statevector manipulation. The SVPair
+// datastructure is used as a key when navigating the various combination of states in the Statevector.
 struct SVPair {
 	std::string name_;
 	int location_;
@@ -25,40 +57,45 @@ struct SVPair {
 	}
 };
 
+// expEval used in the parsing of custom gate definitions, allows the program to distinguish between a 
+// variable or constant being used as input in a gate.
 struct expEval {
 	std::string ident;
 	double value;
 	bool identNotVal;
 };
 
-
+// doubleOrArg conversion of an expEval into an expression of which position in a variable list to get
+// a parameter or the constant value of the parameter provided in gate definition.
 struct doubleOrArg {
 	bool doubleNotArg;
 	double valD;
 	int position;
 };
 
-
+// gateDeclaration datastructure to be used to carry custom gate declaration header after parsing.
 struct gateDeclaration {
 	std::string gateName;
 	std::vector<std::string> idLocList;
 	std::vector<std::string> paramList;
 };
 
+// gateOp datastructure to hold representation of a gate operation in a custom gate, uses the
+// expVal datastructrure to differentiate between constant parameters and required parameters
 struct gateOp {
 	std::string gateName;
 	std::vector<expEval> params;
 	std::vector<std::string> idLocs;
 };
 
-
-
+// DeviceType enumeration of what kind of device we are using to run quantum simulations.
 enum DeviceType {
 	CPU_,
 	GPU_,
 	INVALID
 };
 
+// HeaderData datastructure to hold header data provided in the OPENQASM standard.
 class HeaderData {
 private:
 	double openQASMStandard_ = 0.0;
@@ -70,14 +107,16 @@ public:
 	}
 };
 
+// RegisterType enumeration for what kind of register is being instantiated.
 enum RegisterType {
 	quantum_,
 	classical_,
 	invalid_
 };
 
-
-
+// QuantumRegister datastructure to hold a parsed representation of a quantum register.
+// This datastructure holds no qubits, but will be used by the staging module to 
+// generate qubit construction instructions.
 class QuantumRegister {
 private:
 	std::string identifier_;
@@ -99,6 +138,8 @@ public:
 	QuantumRegister() = default;
 };
 
+// QuantumRegister datastructure to hold a parsed representation of a classical register.
+// This datastructure does hold classical bits via the int representation.
 class ClassicalRegister {
 private:
 	std::string identifier_;
@@ -127,6 +168,8 @@ public:
 	ClassicalRegister() = default;
 };
 
+// Register is a wrapper for Quantum and Classical registers, allowing the staging module
+// to differentiate between the two.
 class Register {
 private:
 	RegisterType regType_;
@@ -168,8 +211,8 @@ public:
 	}
 };
 
-
-
+// GateRequestType defines an enumeration for the primitive gate types U and CX as well
+// as all qeLib1 gates. Allowing for efficient compilation
 enum GateRequestType {
 	I,
 	U,
@@ -219,6 +262,8 @@ enum GateRequestType {
 	CUSTOM
 };
 
+// GateRequest is a datastructure to represent a user commanded gate operation, will be used by 
+// computation device to generate the gate matrices itself
 class GateRequest {
 private:
 	GateRequestType gateType_;
@@ -258,6 +303,8 @@ public:
 	}
 };
 
+// ConcurrentBlock represent a block of gates which cna be processed in parallel without affecting 
+// accuracy of the computation. Used by staging module to send gates to Device
 class ConcurrentBlock {
 private:
 	int count_ = 0;
@@ -280,6 +327,8 @@ public:
 	}
 };
 
+// Qubit is the basic Qubit representation which is used to initially store qubit values. If 
+// Valkyrie is in fast computation mode then Qubit's are used exclusively to store the idividual states
 class Qubit {
 private:
 	std::complex<double>* s_0;
@@ -300,9 +349,10 @@ public:
 	}
 };
 
+// Gate provides a basic gate representation for the computation device to perform matrix operations.
+// If Valkyrie is in fast computation mode then the Gate matrix is directly used for computation.
 class Gate {
 private:
-	// std::complex<double>* gateArray_; for next iteration
 	std::vector<std::vector<std::complex<double>>> gateArray_;
 	int m_;	// dimensions
 	int n_;
@@ -313,13 +363,6 @@ public:
 		gateArray_ = gateArray;
 	}
 	std::complex<double> fetchValue(int x, int y) {
-		/*if (x < m_ && y < n_) {
-			int index = x * m_ + y;
-			return &gateArray_[index];
-		}
-		else {
-			return nullptr;
-		}*/
 		return gateArray_[x][y];
 	}
 	std::vector<std::vector<std::complex<double>>> getArray() {
@@ -334,13 +377,18 @@ public:
 
 };
 
+// Calculation is a class which is used by both fast and statevector computation modes
+// It holds the primitive gate and qubit values or state vector locations that are used
+// by the matrix processing modules.
 class Calculation {
 private:
 	Gate* gate_;
-	//std::complex<double>* qubitValues_; next iteration
 	std::vector<Qubit*> qubitValues_;
 	std::vector<SVPair> locations_;
 	
+	// getNewOrder1 under the tensor product reordering procedure, this function
+	// is able to shuffle the qubit that this Calculation is concerning right to the end
+	// of the tensor product stack
 	std::vector<SVPair> getNewOrder1(std::vector<SVPair> oldOrder) {
 		std::vector<SVPair> newOrder;
 		for (int i = 0; i < oldOrder.size(); i++) {
@@ -352,6 +400,9 @@ private:
 		return newOrder;
 	}
 
+	// getNewOrder2 under the tensor product reordering procedure, this function
+	// is able to shuffle the two qubits that this Calculation is concerning right to the end
+	// of the tensor product stack
 	std::vector<SVPair> getNewOrder2(std::vector<SVPair> oldOrder) {
 		std::vector<SVPair> newOrder;
 		for (int i = 0; i < oldOrder.size(); i++) {
@@ -379,6 +430,9 @@ public:
 	std::vector<SVPair> getLocations() {
 		return locations_;
 	}
+	// getNewOrder is important for the statevector computation mode. When performing the
+	// matrix multiplication we are using a specialised tensor product (for efficiency) which
+	// relies on the two concerned qubits to be pushed to the back of the tensor product stack.
 	std::vector<SVPair> getNewOrder(std::vector<SVPair> oldOrder) {
 		if (locations_.size() != 2 && locations_.size() != 1) {
 			return oldOrder;
@@ -394,6 +448,8 @@ public:
 	}
 };
 
+// MeasureCommand provides a simple datastructure to track measurement commands from
+// the user during parsing.
 class MeasureCommand {
 private:
 	idLocationPairs from_;
@@ -413,16 +469,28 @@ public:
 	}
 };
 
-
-
+// StateVector is a core component of the quantum computation stack.
+// In Fast compute mode, Statevector is used to store the overall results of the computation
+// In Statevector computer mode, the Statevector is used both in the input and output of the computation
 class StateVector {
 private:
+	// positions_ stores the current locations of different Quantum register and position pairs (each defining a qubit)
+	// these locations are relevant to the order in which these qubits were multiplied in the tensor product used
+	// to generate the StateVector
 	std::vector<SVPair> positions_;
+	// state_ is the statevector in full tensorproduct form, for a system which uses n qubits the state_variable 
+	// will be 2^n long
 	std::vector<std::complex<double>> state_;
+	// For Fast computation mode, the qubitMap_ provides access to the actual qubit values stored in the Qubit datastructure
 	std::map<std::string, std::vector<Qubit*>>* qubitMap_;
+	// reordered_ is a temporary state vector used during computation to represent the temporary reordering
+	// of the state vector for the tail computation
 	StateVector* reordered_;
 	bool isReorder = false;
 
+	// inverseTail provides the inverse of the tail function, this allows us to calculate (given the position of
+	// the qubit in the tensor product and the location in the statevector) which component of the qubit state (0th or 1th component)
+	// we need to process on.
 	int inverseTail(int nTotal, int indexInPositions, int locationInStateVec) {
 		int j = std::pow(2, (nTotal - indexInPositions));
 		if ((locationInStateVec % j) < (j / 2)) {
@@ -433,10 +501,14 @@ private:
 		}
 	}
 
+	// tail provides a function (using inverseTail) to calculate whether we need the 0th or 1th component
+	// of a particular qubit.
 	bool tail(int nTotal, int indexInPositions, int locationInStateVec, int index) {
 		return inverseTail(nTotal, indexInPositions, locationInStateVec) == index;
 	}
 
+	// used in Fast computation mode to calculate which values in a statevector is affected by a particular
+	// calculation result.
 	std::vector<int> affectedValues(int loc1, int index1, int loc2, int index2) {
 		std::vector<int> affected;
 		int n = positions_.size();
@@ -448,6 +520,8 @@ private:
 		return affected;
 	}
 
+	// calculateNewVals is used in fast computation mode for keeping track of qubit values changing compensating
+	// in the state vector.
 	void calculateNewVals(int pos1, int pos2, std::vector<std::complex<double>> newValues, int loc1Index, int loc2Index) {
 		int pos = pos1 * 2 + pos2;
 		std::complex<double> newVal = newValues[pos];
@@ -496,6 +570,7 @@ private:
 		return oldValues;
 	}
 
+	// resolvePosition calculates which position in the statevector is addressed by the values given
 	int resolvePosition(std::vector<int> values) {
 		int n = values.size();
 		int position = 0;
@@ -527,6 +602,8 @@ public:
 		isReorder = reorder;
 	}
 
+	// Used in initialisation of StateVector, tensorProduct produces the default statevector which is populated by
+	// calculation and returned at the end.
 	void tensorProduct() {
 		for (std::map<std::string, std::vector<Qubit*>>::iterator it = qubitMap_->begin(); it != qubitMap_->end(); ++it) {
 			for (int i = 0; i < it->second.size(); i++) {
@@ -549,7 +626,7 @@ public:
 		}
 	}
 
-	// Will only be called during reordering
+	// Will only be called during reordering, provides same function as standed tensorProduct function
 	void tensorProduct(std::vector<SVPair> newOrder, std::vector<SVPair> oldOrder, std::vector<std::complex<double>> oldState) {
 		positions_ = newOrder;
 		int n = positions_.size();
@@ -567,6 +644,7 @@ public:
 
 	}
 
+	// modifyState used in fast computation mode to modify the statevector to try and preseve entanglement
 	void modifyState(std::vector<std::complex<double>> newValues, SVPair loc1, SVPair loc2) {
 		int loc1Index = searchIndex(loc1);
 		int loc2Index = searchIndex(loc2);
@@ -582,6 +660,7 @@ public:
 		calculateNewVals(1, 1, newValues, loc1Index, loc2Index);
 	}
 
+	// directModify allows statevector computation mode to modify the entire statevector
 	void directModify(int index, std::complex<double> value) {
 		if (index >= state_.size()) {
 			return;
@@ -595,6 +674,7 @@ public:
 		state_ = values;
 	}
 
+	// quickRefresh used in fast computation mode to recalculate the statevector values.
 	void quickRefresh() {
 		int n = positions_.size();
 		int dimStateVec = std::pow(2, n);
@@ -615,11 +695,15 @@ public:
 		return inverseTail(positions_.size(), position, positionInStateVector);
 	}
 
+	// reorder allows us to reorder the statevector and returns this temporary vector. This 
+	// vector is used in compuitation and the reconciled with original tensor product later on.
 	StateVector* reorder(std::vector<SVPair> newOrder) {		
 		reordered_->tensorProduct(newOrder, positions_, state_);
 		return reordered_;
 	}
 
+	// reconcile accepts the temporary statevector and reorders it into the orginal order
+	// and modifies the appropriate order.
 	void reconcile(StateVector* reordered) {
 		int n = positions_.size();
 		int dimStateVec = std::pow(2, n);

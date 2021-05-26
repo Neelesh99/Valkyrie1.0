@@ -23,30 +23,32 @@
 
 using namespace antlr4;
 
+// getexepath allows vakyrie to resolve the directory it is operating in
 std::string getexepath()
 {
     char result[MAX_PATH];
     return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
 }
-
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
+// DisplayHeader is used during info print command to display GPU devices connected
 void DisplayHeader();
+// printHelp will print help if the user enters an invalid set of command line options
 void printHelp();
+// resolveDeviceType resolves what type of device the user wants to rpocess on
 DeviceType resolveDeviceType(std::vector<std::string> arguments);
+// fetchFileName finds the file name specified by the user
 std::string fetchFileName(std::vector<std::string> arguments);
+// CPURun performs CPU execution of the target QASM code
 void CPURun(std::string filename, bool SV, bool jsonMode);
+// GPURun performs GPU execution of the target QASM code
 void GPURun(std::string filename, bool SV, bool jsonMode);
+// handleInfoRequest prints the info requested by user in command line options
 void handleInfoRequest(std::vector<std::string> arguments);
+// resolveComputeMode resolves whether the user wants fast or statevector compute modes
 bool resolveComputeMode(std::vector<std::string> arguments);
+// resolveJSONPrint resolves whether this is a VisualQ call which requires json output
 bool resolveJsonPrint(std::vector<std::string> arguments);
 
-
-__global__ void addKernel(int *c, const int *a, const int *b)
-{
-    int i = threadIdx.x;
-    c[i] = a[i] + b[i];
-}
-
+// timeCPUExecution is used for experimentation and metric gathering
 void timeCPUExecution() {
     auto begin = std::chrono::high_resolution_clock::now();
     std::ifstream stream;    
@@ -71,7 +73,7 @@ void timeCPUExecution() {
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
     device.prettyPrintQubitStates(device.revealQuantumState());
 }
-
+// timeGPUExecution is used for experimentation and metric gathering
 void timeGPUExecution() {
     auto begin = std::chrono::high_resolution_clock::now();
     std::ifstream stream;
@@ -108,146 +110,37 @@ void timeGPUExecution() {
 }
 
 
-
+// main is the entrypoint of the program
 int main(int argc, char *argv[])
 {
-    //std::cout << "There are: " << argc << " arguments" << std::endl;
-    /*const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };*/
-
-    ////// Add vectors in parallel.
-    //cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    //if (cudaStatus != cudaSuccess) {
-    //    fprintf(stderr, "addWithCuda failed!");
-    //    return 1;
-    //}
-
-    //printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-    //    c[0], c[1], c[2], c[3], c[4]);
-
-    //// cudaDeviceReset must be called before exiting in order for profiling and
-    //// tracing tools such as Nsight and Visual Profiler to show complete traces.
-    //cudaStatus = cudaDeviceReset();
-    //if (cudaStatus != cudaSuccess) {
-    //    fprintf(stderr, "cudaDeviceReset failed!");
-    //    return 1;
-    //}
     std::vector<std::string> arguments;
     for (int i = 1; i < argc; i++) {
-        arguments.push_back(argv[i]);
+        arguments.push_back(argv[i]);           // collect command line arguments
     }
-    handleInfoRequest(arguments);
+    handleInfoRequest(arguments);               // check if information was requested by user and print
 
-    DeviceType type = resolveDeviceType(arguments);
+    DeviceType type = resolveDeviceType(arguments);         // calculate whether the user wants to use the CPU or GPU
     if (type == INVALID) {
         std::cout << "Invalid or No execution mode provided, specify -c or -g" << std::endl;
         printHelp();
         return 1;
     }
 
-    std::string fileName = fetchFileName(arguments);
+    std::string fileName = fetchFileName(arguments);        // resolve the qasm file the user wants to process
     if (fileName == "INVALID") {
         std::cout << "File not specified, please use -o <filename> to indicate which file Valkyrie should process" << std::endl;
         printHelp();
         return 1;
     }
-    bool svMode = resolveComputeMode(arguments);
-    bool jsonMode = resolveJsonPrint(arguments);
-    if (type == CPU_) {
+    bool svMode = resolveComputeMode(arguments);            // resolve whether the user wanted to user statevector or fast compute mode
+    bool jsonMode = resolveJsonPrint(arguments);            // reolve whether the user wants a JSON print at the end or normal print
+    if (type == CPU_) {                                     // depending on requested devicetype run on CPU or GPU
         CPURun(fileName, svMode, jsonMode);
     }
     else {
-        GPURun(fileName, svMode, jsonMode);
+        GPURun(fileName, svMode, jsonMode);      
     }
-
-    
-    
-    /*for (int i = 0; i < 1; i++) {
-        timeGPUExecution();
-    }*/
     return 0;
-}
-
-// Helper function for using CUDA to add vectors in parallel.
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
-{
-    int *dev_a = 0;
-    int *dev_b = 0;
-    int *dev_c = 0;
-    cudaError_t cudaStatus;
-
-    // Choose which GPU to run on, change this on a multi-GPU system.
-    cudaStatus = cudaSetDevice(0);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
-        goto Error;
-    }
-
-    // Allocate GPU buffers for three vectors (two input, one output)    .
-    cudaStatus = cudaMalloc((void**)&dev_c, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMalloc((void**)&dev_a, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMalloc((void**)&dev_b, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
-
-    // Copy input vectors from host memory to GPU buffers.
-    cudaStatus = cudaMemcpy(dev_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-    cudaStatus = cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-    // Launch a kernel on the GPU with one thread for each element.
-    addKernel<<<1, size>>>(dev_c, dev_a, dev_b);
-
-    // Check for any errors launching the kernel
-    cudaStatus = cudaGetLastError();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-        goto Error;
-    }
-    
-    // cudaDeviceSynchronize waits for the kernel to finish, and returns
-    // any errors encountered during the launch.
-    cudaStatus = cudaDeviceSynchronize();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-        goto Error;
-    }
-
-    // Copy output vector from GPU buffer to host memory.
-    cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
-
-Error:
-    cudaFree(dev_c);
-    cudaFree(dev_a);
-    cudaFree(dev_b);
-    
-    return cudaStatus;
 }
 
 void DisplayHeader()
@@ -337,34 +230,34 @@ std::string fetchFileName(std::vector<std::string> arguments) {
 
 void CPURun(std::string filename, bool SV, bool jsonMode) {
     std::ifstream stream;
-    stream.open(filename);
+    stream.open(filename);          // Open File requested
     if (!stream.is_open()) {
         std::cout << "Couldn't find file specified" << std::endl;
         printHelp();
         return;
     }
-    ANTLRInputStream input(stream);
+    ANTLRInputStream input(stream);             // Convert filestream to ANTLR stream
 
-    qasm2Lexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    qasm2Parser parser(&tokens);
+    qasm2Lexer lexer(&input);                   // Lex file
+    CommonTokenStream tokens(&lexer);           // get the tokens
+    qasm2Parser parser(&tokens);                // send to antlr parser
 
-    qasm2Parser::MainprogContext* tree = parser.mainprog();
+    qasm2Parser::MainprogContext* tree = parser.mainprog();             // Fetch AST tree
 
     qasm2BaseVisitor visitor;
-    visitor.visitMainprog(tree);
-    std::vector<Register> registers = visitor.getRegisters();
-    std::vector<GateRequest> gateRequests = visitor.getGates();
-    Stager stage = Stager();
-    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    visitor.visitMainprog(tree);                                        // Use custom visitor to process information
+    std::vector<Register> registers = visitor.getRegisters();           // Get registers defined by user
+    std::vector<GateRequest> gateRequests = visitor.getGates();         // Get gates defined by user
+    Stager stage = Stager();                                            
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);          // User stager to convert parsed information into calculation commands
     CPUDevice device = CPUDevice();
-    if (!SV) {
+    if (!SV) {                                                          // If we are in statevector compute mode, run in statevector mode
         device.run(stage.getRegisters(), blocks);
     }
     else {
         device.runSV(stage.getRegisters(), blocks);
     }    
-    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);        // Initialise statevector measurement
     measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
@@ -373,41 +266,41 @@ void CPURun(std::string filename, bool SV, bool jsonMode) {
         measure.printClassicalRegisters();
     }
     else {
-        JSONify json = JSONify(measure.getAllRegisters(), device.getStateVector());
+        JSONify json = JSONify(measure.getAllRegisters(), device.getStateVector());                     // If requested print in JSON format
         json.printJSON();
     }
 }
 
 void GPURun(std::string filename, bool SV, bool jsonMode) {
     std::ifstream stream;
-    stream.open(filename);
+    stream.open(filename);          // Open File requested
     if (!stream.is_open()) {
         std::cout << "Couldn't find file specified" << std::endl;
         printHelp();
         return;
     }
-    ANTLRInputStream input(stream);
+    ANTLRInputStream input(stream);                 // Convert filestream to ANTLR stream
 
-    qasm2Lexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    qasm2Parser parser(&tokens);
+    qasm2Lexer lexer(&input);                       // Lex file
+    CommonTokenStream tokens(&lexer);               // get the tokens
+    qasm2Parser parser(&tokens);                    // send to antlr parser
 
-    qasm2Parser::MainprogContext* tree = parser.mainprog();
+    qasm2Parser::MainprogContext* tree = parser.mainprog();             // Fetch AST tree
 
     qasm2BaseVisitor visitor;
-    visitor.visitMainprog(tree);
-    std::vector<Register> registers = visitor.getRegisters();
-    std::vector<GateRequest> gateRequests = visitor.getGates();
+    visitor.visitMainprog(tree);                                        // Use custom visitor to process information
+    std::vector<Register> registers = visitor.getRegisters();           // Get registers defined by user
+    std::vector<GateRequest> gateRequests = visitor.getGates();         // Get gates defined by user
     Stager stage = Stager();
-    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);          // User stager to convert parsed information into calculation commands
     GPUDevice device = GPUDevice();
-    if (!SV) {
+    if (!SV) {                                                          // If we are in statevector compute mode, run in statevector mode
         device.run(stage.getRegisters(), blocks);
     }
     else {
         device.runSV(stage.getRegisters(), blocks);
     }
-    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);        // Initialise statevector measurement
     measure.measure();
     std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
     measure.loadMeasureCommands(commands);
@@ -416,7 +309,7 @@ void GPURun(std::string filename, bool SV, bool jsonMode) {
         measure.printClassicalRegisters();
     }
     else {
-        JSONify json = JSONify(measure.getAllRegisters(), device.getStateVector());
+        JSONify json = JSONify(measure.getAllRegisters(), device.getStateVector());                     // If requested print in JSON format
         json.printJSON();
     }
 }

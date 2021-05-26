@@ -2,6 +2,14 @@
 #include <random>
 #include <ctime>
 
+/*
+	Measurement.cpp
+	Description: File provides implementation for Quantum state measurement
+
+*/
+
+// selectState0 calculates whether the qubit is in state 0 or not 
+// for single qubit measurement
 bool MeasurementCalculator::selectState0(Qubit* val)
 {
 	std::complex<double>* s_0 = val->fetch(0);
@@ -24,6 +32,7 @@ void MeasurementCalculator::registerHandover(std::map<std::string, std::vector<Q
 	registerMap_ = registerMap;
 }
 
+// Measures single qubits in fast compute mode
 int MeasurementCalculator::measureSingle(std::string registerName, int location)
 {
 	Qubit* quantumValue = registerMap_[registerName][location];
@@ -48,6 +57,8 @@ void MeasurementCalculator::loadMeasureCommands(std::vector<MeasureCommand> comm
 	commands_ = commands;
 }
 
+// Uses user inputted measure commands to pass resolved qubit states into the classical registers
+// that the measurement was requested into
 void MeasurementCalculator::passMeasurementsIntoClassicalRegisters()
 {
 	for (auto command : commands_) {
@@ -87,11 +98,13 @@ void MeasurementCalculator::printClassicalRegisters()
 	}
 }
 
+// getMagnitude calculates magnitude of single complex number in a euclidean sense
 double StateVectorMeasurement::getMagnitude(std::complex<double> value)
 {
 	return std::pow(value.real(), 2) + std::pow(value.imag(), 2);
 }
 
+// getTotalMagnitude calculates magnitude of the entire statevector in terms of L2 Norm
 double StateVectorMeasurement::getTotalMagnitude()
 {
 	double total = 0;
@@ -108,23 +121,25 @@ StateVectorMeasurement::StateVectorMeasurement(StateVector* sv, std::vector<Regi
 	allRegisters_ = allRegister;
 }
 
+// measure calculates which state in the statevector the qubits have collpased to using a random number
+// generator and the probabilities expressed in the statevector
 void StateVectorMeasurement::measure()
 {
-	double totalMag =  getTotalMagnitude();
-	std::srand(std::time(nullptr));
-	int randomVal = std::rand() % 100;
-	double measurement = ((double)randomVal / 100) * (totalMag);
+	double totalMag =  getTotalMagnitude();							// Find total magnitude of the statevector
+	std::srand(std::time(nullptr));									// set seed fopr random number generator to use the current time
+	int randomVal = std::rand() % 100;								// generate number between 1 and 100
+	double measurement = ((double)randomVal / 100) * (totalMag);	// normalise this number to total magnitude of the statevector
 	int state = 0;
 	if (sv_->getState().size() == 0) {
 		return;
 	}
 	std::vector<std::complex<double>> values = sv_->getState();
-	double soFar = getMagnitude(values[state]);
-	while (measurement > soFar) {
-		state++;
+	double soFar = getMagnitude(values[state]);						// Keep iterating through the possible states until the accumulated magnitude
+	while (measurement > soFar) {									// goes above the "measured" value
+		state++;	
 		soFar += getMagnitude(values[state]);
 	}
-	state_ = state;
+	state_ = state;													// return selected state
 }
 
 void StateVectorMeasurement::loadMeasureCommands(std::vector<MeasureCommand> commands)
@@ -132,6 +147,8 @@ void StateVectorMeasurement::loadMeasureCommands(std::vector<MeasureCommand> com
 	commands_ = commands;
 }
 
+// Uses user inputted measure commands to pass resolved qubit states into the classical registers
+// that the measurement was requested into
 void StateVectorMeasurement::passMeasurementsIntoClassicalRegisters()
 {
 	for (auto command : commands_) {

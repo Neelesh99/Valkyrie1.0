@@ -4,6 +4,14 @@
 #include "BaseTypes.h"
 #include <iostream>
 
+/*
+	Measurement.h
+	Description: File provides interface for Quantum state measurement
+
+*/
+
+// MeasurementCalculator provides methods for measurement of the quantum state
+// into classical registers for fast compute mode
 class MeasurementCalculator {
 private:
 	std::map<std::string, std::vector<Qubit*>> registerMap_;
@@ -34,6 +42,8 @@ public:
 	void printClassicalRegisters();
 };
 
+// StateVectorMeasurement provides methods for measurement of the entire
+// statevector in statevector compute mode
 class StateVectorMeasurement {
 private:
 	StateVector* sv_;
