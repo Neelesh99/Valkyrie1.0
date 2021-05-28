@@ -48,65 +48,127 @@ bool resolveComputeMode(std::vector<std::string> arguments);
 // resolveJSONPrint resolves whether this is a VisualQ call which requires json output
 bool resolveJsonPrint(std::vector<std::string> arguments);
 
+enum timingPoint
+{
+    NONE_,
+    FULL,
+    PARSE,
+    STAGE,
+    EXECUTION
+};
+
+// resolveTimingRequest
+timingPoint resolveTimingRequest(std::vector<std::string> arguments);
+
 // timeCPUExecution is used for experimentation and metric gathering
-void timeCPUExecution() {
-    auto begin = std::chrono::high_resolution_clock::now();
-    std::ifstream stream;    
-    stream.open("output.qasm");
-    ANTLRInputStream input(stream);
-
-    qasm2Lexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    qasm2Parser parser(&tokens);
-
-    qasm2Parser::MainprogContext* tree = parser.mainprog();
-
+void timeCPUExecution(std::string filename, bool SV, bool jsonMode, timingPoint point) {
+    // Start clock
+    std::chrono::steady_clock::time_point begin;
+    std::chrono::steady_clock::time_point end;
+    if (point == FULL || point == PARSE) {
+        begin = std::chrono::high_resolution_clock::now();
+    }
+    std::ifstream stream;
+    stream.open(filename);          // Open File requested
+    if (!stream.is_open()) {
+        std::cout << "Couldn't find file specified" << std::endl;
+        printHelp();
+        return;
+    }
+    ANTLRInputStream input(stream);                 // Convert filestream to ANTLR stream
+    qasm2Lexer lexer(&input);                       // Lex file
+    CommonTokenStream tokens(&lexer);               // get the tokens
+    qasm2Parser parser(&tokens);                    // send to antlr parser
+    qasm2Parser::MainprogContext* tree = parser.mainprog();             // Fetch AST tree
     qasm2BaseVisitor visitor;
-    visitor.visitMainprog(tree);
-    std::vector<Register> registers = visitor.getRegisters();
-    std::vector<GateRequest> gateRequests = visitor.getGates();
+    visitor.visitMainprog(tree);                                        // Use custom visitor to process information
+    std::vector<Register> registers = visitor.getRegisters();           // Get registers defined by user
+    std::vector<GateRequest> gateRequests = visitor.getGates();         // Get gates defined by user   
+    if (point == PARSE) {
+        end = std::chrono::high_resolution_clock::now();
+    }
+    if (point == STAGE) {
+        begin = std::chrono::high_resolution_clock::now();
+    }
     Stager stage = Stager();
-    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);          // User stager to convert parsed information into calculation commands       
+    if (point == STAGE) {
+        end = std::chrono::high_resolution_clock::now();
+    }
+    if (point == EXECUTION) {
+        begin = std::chrono::high_resolution_clock::now();
+    }
     CPUDevice device = CPUDevice();
-    device.run(stage.getRegisters(), blocks);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
-    device.prettyPrintQubitStates(device.revealQuantumState());
+    if (!SV) {                                                          // If we are in statevector compute mode, run in statevector mode
+        device.run(stage.getRegisters(), blocks);
+    }
+    else {
+        device.runSV(stage.getRegisters(), blocks);
+    }
+    if (point == EXECUTION) {
+        end = std::chrono::high_resolution_clock::now();
+    }
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);        // Initialise statevector measurement
+    measure.measure();
+    if (point == FULL) {
+        end = std::chrono::high_resolution_clock::now();
+    }
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;   
 }
 // timeGPUExecution is used for experimentation and metric gathering
-void timeGPUExecution() {
-    auto begin = std::chrono::high_resolution_clock::now();
+void timeGPUExecution(std::string filename, bool SV, bool jsonMode, timingPoint point) {
+    // Start clock
+    std::chrono::steady_clock::time_point begin;
+    std::chrono::steady_clock::time_point end;
+    if (point == FULL || point == PARSE) {
+        begin = std::chrono::high_resolution_clock::now();
+    }
     std::ifstream stream;
-    stream.open("output.qasm");
-    ANTLRInputStream input(stream);
-
-    qasm2Lexer lexer(&input);
-    CommonTokenStream tokens(&lexer);
-    qasm2Parser parser(&tokens);
-
-    qasm2Parser::MainprogContext* tree = parser.mainprog();
-
+    stream.open(filename);          // Open File requested
+    if (!stream.is_open()) {
+        std::cout << "Couldn't find file specified" << std::endl;
+        printHelp();
+        return;
+    }
+    ANTLRInputStream input(stream);                 // Convert filestream to ANTLR stream
+    qasm2Lexer lexer(&input);                       // Lex file
+    CommonTokenStream tokens(&lexer);               // get the tokens
+    qasm2Parser parser(&tokens);                    // send to antlr parser
+    qasm2Parser::MainprogContext* tree = parser.mainprog();             // Fetch AST tree
     qasm2BaseVisitor visitor;
-    visitor.visitMainprog(tree);
-    std::vector<Register> registers = visitor.getRegisters();
-    std::vector<GateRequest> gateRequests = visitor.getGates();
+    visitor.visitMainprog(tree);                                        // Use custom visitor to process information
+    std::vector<Register> registers = visitor.getRegisters();           // Get registers defined by user
+    std::vector<GateRequest> gateRequests = visitor.getGates();         // Get gates defined by user   
+    if (point == PARSE) {
+        end = std::chrono::high_resolution_clock::now();
+    }
+    if (point == STAGE) {
+        begin = std::chrono::high_resolution_clock::now();
+    }
     Stager stage = Stager();
-    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);
-    GPUDevice deviceG = GPUDevice();
-    deviceG.run(stage.getRegisters(), blocks);
-    auto end = std::chrono::high_resolution_clock::now();
+    std::vector<ConcurrentBlock> blocks = stage.stageInformation(registers, gateRequests);          // User stager to convert parsed information into calculation commands       
+    if (point == STAGE) {
+        end = std::chrono::high_resolution_clock::now();
+    }
+    if (point == EXECUTION) {
+        begin = std::chrono::high_resolution_clock::now();
+    }
+    GPUDevice device = GPUDevice();
+    if (!SV) {                                                          // If we are in statevector compute mode, run in statevector mode
+        device.run(stage.getRegisters(), blocks);
+    }
+    else {
+        device.runSV(stage.getRegisters(), blocks);
+    }
+    if (point == EXECUTION) {
+        end = std::chrono::high_resolution_clock::now();
+    }
+    StateVectorMeasurement measure = StateVectorMeasurement(device.getStateVector(), registers);        // Initialise statevector measurement
+    measure.measure();
+    if (point == FULL) {
+        end = std::chrono::high_resolution_clock::now();
+    }
     std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << std::endl;
-    deviceG.prettyPrintQubitStates(deviceG.revealQuantumState());
-    MeasurementCalculator measure = MeasurementCalculator(registers);
-    measure.registerHandover(deviceG.revealQuantumState());
-    measure.measureAll();
-    std::map<std::string, std::vector<int>> measuredMap_ = measure.returnMeasurementMap();
-    std::cout << "Measurement complete" << std::endl;
-    std::vector<MeasureCommand> commands = visitor.getMeasureCommands();
-    measure.loadMeasureCommands(commands);
-    measure.passMeasurementsIntoClassicalRegisters();
-    Register cReg = measure.fetchRegister("c");
-    std::cout << "Commands processed" << std::endl;
 }
 
 
@@ -134,6 +196,20 @@ int main(int argc, char *argv[])
     }
     bool svMode = resolveComputeMode(arguments);            // resolve whether the user wanted to user statevector or fast compute mode
     bool jsonMode = resolveJsonPrint(arguments);            // reolve whether the user wants a JSON print at the end or normal print
+    timingPoint timing = resolveTimingRequest(arguments);
+    if (timing != NONE_) {
+        if (type == CPU_) {                                     // depending on requested devicetype run on CPU or GPU
+            for (int i = 0; i < 121; i++) {
+                timeCPUExecution(fileName, svMode, jsonMode, timing);
+            }
+        }
+        else {
+            for (int i = 0; i < 121; i++) {
+                timeGPUExecution(fileName, svMode, jsonMode, timing);
+            }
+        }
+        return 0;
+    }
     if (type == CPU_) {                                     // depending on requested devicetype run on CPU or GPU
         CPURun(fileName, svMode, jsonMode);
     }
@@ -213,6 +289,26 @@ bool resolveJsonPrint(std::vector<std::string> arguments) {
         }
     }
     return false;
+}
+
+timingPoint resolveTimingRequest(std::vector<std::string> arguments) {
+    for (int i = 0; i < arguments.size(); i++) {
+        if (arguments[i] == "-time") {
+            if (i != arguments.size() - 1) {
+                if (arguments[i + 1] == "parse") {
+                    return PARSE;
+                }
+                if (arguments[i + 1] == "staging") {
+                    return STAGE;
+                }
+                if (arguments[i + 1] == "execution") {
+                    return EXECUTION;
+                }
+            }
+            return FULL;
+        }
+    }
+    return NONE_;
 }
 
 std::string fetchFileName(std::vector<std::string> arguments) {

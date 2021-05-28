@@ -2,6 +2,7 @@
 #include "CPUDevice.h"
 #include <cmath>
 #include "GateUtilitiesCPU.h"
+#include <chrono>
 
 using namespace std::complex_literals;
 const double ROOT2INV = 1.0 / std::pow(2, 0.5);
@@ -165,77 +166,12 @@ bool CPUQuantumCircuit::checkComplete()
 	return done_;
 }
 
-// getCXResults generates an 2^n by 2^n matrix from the tensor product of I gates and a final CX gate
-// returns this matrix for computation
-std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getCXResult(int n)
-{
-	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
-	if (n < 2) {
-		return std::vector<std::vector<std::complex<double>>>();
-	}
-	std::vector<std::vector<std::complex<double>>> output;
-	// overall sidelength of resultant gate
-	int dimOverall = std::pow(2, n);
-	// number of I multiplications required
-	int leftOver = n - 2;
-	if (leftOver == 0) {
-		output = { {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}, {0, 0, 1, 0} };
-		return output;
-	}
-	output.resize(dimOverall);
-	for (int i = 0; i < dimOverall; i++) {
-		std::vector<std::complex<double>> subVec;
-		subVec.resize(dimOverall);
-		output[i] = subVec;
-	}
-	// skinny calculation due to the CX being the last matrix in a series of I tensor products
-	// using tail methodology
-	for (int i = 0; i < std::pow(2, leftOver); i++) {
-		output[4 * i][4 * i] = 1;
-		output[4 * i + 1][4 * i + 1] = 1;
-		output[4 * i + 2][4 * i + 3] = 1;
-		output[4 * i + 3][4 * i + 2] = 1;
-	}
-	return output;
-}
-
-// getGenericUResult return tensor product of a series of I gates and finally the U gate we are applying
-std::vector<std::vector<std::complex<double>>> CPUQuantumProcessor::getGenericUResult(Gate* gate, int n)
-{
-	// n is the number of qubits, we have to have n-2 I gates and then a CX gate at the end
-	if (n < 1) {
-		return std::vector<std::vector<std::complex<double>>>();
-	}
-	std::vector<std::vector<std::complex<double>>> output;
-	// overall sidelength of resultant gate
-	int dimOverall = std::pow(2, n);
-	// number of I multiplications required
-	int leftOver = n - 1;
-	if (leftOver == 0) {
-		output = gate->getArray();
-		return output;
-	}
-	output.resize(dimOverall);
-	for (int i = 0; i < dimOverall; i++) {
-		std::vector<std::complex<double>> subVec;
-		subVec.resize(dimOverall);
-		output[i] = subVec;
-	}
-	// skinny calculation due to the CX being the last matrix in a series of I tensor products
-	// using tail methodology
-	for (int i = 0; i < std::pow(2, leftOver); i++) {
-		output[2 * i][2 * i] = gate->fetchValue(0,0);
-		output[2 * i][2 * i + 1] = gate->fetchValue(0, 1);
-		output[2 * i + 1][2 * i] = gate->fetchValue(1, 0);
-		output[2 * i + 1][2 * i + 1] = gate->fetchValue(1, 1);
-	}
-	return output;
-}
 
 void CPUQuantumProcessor::loadCircuit(AbstractQuantumCircuit* circuit)
 {
 	circuit_ = circuit;
 }
+
 // calculate method for isolated fast computation
 void CPUQuantumProcessor::calculate()
 {
@@ -289,34 +225,30 @@ void CPUQuantumProcessor::calculate()
 // calculateWithStateVector for accurate Quantum Computer emulation, uses statevector in it's entirety
 void CPUQuantumProcessor::calculateWithStateVector()
 {
+	long long counter = 0;
 	while (!circuit_->checkComplete()) {	// check if there are still calculations to consume
-		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();	// fetch calculation
-		for (auto calc : calcBlock) {
+		std::vector<Calculation> calcBlock = circuit_->getNextCalculation();	// fetch calculation		
+		for (auto calc : calcBlock) {			
 			Gate* gate = calc.getGate();
 			int m = gate->getM();
 			int n = gate->getN();
 			int qubitN = m / 2;
 			StateVector* sv = circuit_->getStateVector();						// get current state vector
 			std::vector<SVPair> newOrder = calc.getNewOrder(sv->getOrder());	// use the calculation function to work out the new order of the state vector for tail procedure
+			
 			StateVector* reordered = sv->reorder(newOrder);						// fetch temporary statevector using reordered tensor product
-			std::vector<std::vector<std::complex<double>>> gateValues;
-			if (m == 2) {
-				gateValues = getGenericUResult(gate, sv->getN());				// Generate full gate matrix
-			}
-			if (m == 4) {
-				gateValues = getCXResult(sv->getN());							// Generate full gate matrix
-			}
-			if (gateValues.size() == 0) {
-				return;
-			}
-			std::vector<std::complex<double>> newValues;
-			for (int i = 0; i < gateValues.size(); i++) {
+			std::vector<std::vector<std::complex<double>>> gateValues = gate->getArray();
+			int svLength = reordered->getState().size();	
+			std::vector<std::complex<double>> newValues;			
+			for (int i = 0; i < svLength; i++) {						// Only compute what is required
+				int startIndex = m * (i / m);
 				std::complex<double> acc = 0;
-				for (int j = 0; j < gateValues.size(); j++) {
-					acc += gateValues[i][j] * reordered->getSVValue(j);			// full state vector calculation
+				for (int j = 0; j < m; j++) {
+					acc += gateValues[(i % m)][j] * reordered->getSVValue(startIndex + j);
 				}
-				newValues.push_back(acc);				
+				newValues.push_back(acc);
 			}
+			
 			reordered->directModify(newValues);									// set newValues of reordered state vector
 			sv->reconcile(reordered);											// reconcile temporary order for statevector for the original order
 		}

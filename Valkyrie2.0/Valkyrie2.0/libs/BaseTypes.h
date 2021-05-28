@@ -582,6 +582,25 @@ private:
 		return position;
 	}
 
+	std::vector<int> buildMap(std::vector<SVPair> newOrder, std::vector<SVPair> oldOrder) {
+		std::vector<int> mapper;
+		mapper.resize(newOrder.size());
+		for (int i = 0; i < newOrder.size(); i++) {
+			mapper[i] = searchIndex(newOrder[i], oldOrder);
+		}
+		return mapper;
+	}
+
+	std::vector<int> getOldSchemeValues(std::vector<int> mapper, std::vector<int> newSchemeVals) {
+		std::vector<int> oldVals;
+		int n = newSchemeVals.size();
+		oldVals.resize(n);
+		for (int i = 0; i < n; i++) {
+			oldVals[mapper[i]] = newSchemeVals[i];
+		}
+		return oldVals;
+	}
+
 public:
 	StateVector() {};
 	StateVector(std::map<std::string, std::vector<Qubit*>>* linkToQubits) {
@@ -632,13 +651,15 @@ public:
 		int n = positions_.size();
 		int dimStateVec = std::pow(2, n);
 		state_.resize(dimStateVec);
-		
+
+		std::vector<int> mapper = buildMap(newOrder, oldOrder);
+
 		for (int i = 0; i < dimStateVec; i++) {
 			std::vector<int> newSchemeVals;
 			for (int j = 0; j < n; j++) {
 				newSchemeVals.push_back(inverseTail(n, j, i));
 			}
-			std::vector<int> oldSchemeVals = mapToOldScheme(newSchemeVals, newOrder, oldOrder);
+			std::vector<int> oldSchemeVals = getOldSchemeValues(mapper, newSchemeVals);
 			state_[i] = oldState[resolvePosition(oldSchemeVals)];
 		}
 
@@ -709,12 +730,14 @@ public:
 		int dimStateVec = std::pow(2, n);
 		state_.resize(dimStateVec);
 
+		std::vector<int> mapper = buildMap(positions_, reordered->getOrder());
+
 		for (int i = 0; i < dimStateVec; i++) {
 			std::vector<int> newSchemeVals;
 			for (int j = 0; j < n; j++) {
 				newSchemeVals.push_back(inverseTail(n, j, i));
 			}
-			std::vector<int> oldSchemeVals = mapToOldScheme(newSchemeVals, positions_, reordered->getOrder());
+			std::vector<int> oldSchemeVals = getOldSchemeValues(mapper, newSchemeVals);
 			state_[i] = reordered->getState()[resolvePosition(oldSchemeVals)];
 		}
 	}
